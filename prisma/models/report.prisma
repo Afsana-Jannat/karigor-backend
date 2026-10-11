@@ -1,0 +1,19 @@
+model Report {
+  id           String       @id @default(cuid())
+  jobId        String
+  reporterId   String
+  reason       ReportReason
+  details      String?
+  status       ReportStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  job        Job   @relation(fields: [jobId], references: [id])
+  reporter   User  @relation("ReportFiler", fields: [reporterId], references: [id])
+  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([jobId, reporterId, status])
+}
