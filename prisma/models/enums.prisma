@@ -1,0 +1,80 @@
+enum Role {
+    CUSTOMER
+    TECHNICIAN
+    ADMIN
+}
+
+enum UserStatus {
+    ACTIVE
+    BLOCKED
+    DELETED
+}
+
+enum VerifyStatus {
+    NONE
+    PENDING
+    VERIFIED
+    REJECTED
+}
+
+enum JobStatus {
+    OPEN
+    CONTRACT_PENDING
+    IN_PROGRESS
+    AWAITING_CONFIRMATION
+    COMPLETED
+    CANCELLED
+    DISPUTED
+}
+
+enum BidStatus {
+    ACTIVE
+    SELECTED
+    REJECTED
+    WITHDRAWN
+}
+
+enum ContractStatus {
+    PENDING
+    SIGNED
+    VOID
+}
+
+enum PaymentMethod {
+    BKASH
+    CASH
+}
+
+enum PaymentStatus {
+    INITIATED
+    SUCCESS
+    FAILED
+    CANCELLED
+}
+
+enum ReportReason {
+    NO_SHOW
+    POOR_WORK
+    OVERCHARGE
+    FRAUD
+    OTHER
+}
+
+enum ReportStatus {
+    OPEN
+    RESOLVED
+    DISMISSED
+}
+
+enum NotificationType {
+    JOB_POSTED
+    BID_RECEIVED
+    BID_SELECTED
+    BID_REJECTED
+    CONTRACT_SIGNED
+    JOB_COMPLETED
+    PAYMENT_RECEIVED
+    JOB_CONFIRMED
+    JOB_CANCELLED
+    VERIFICATION_RESULT
+}

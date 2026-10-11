@@ -1,0 +1,27 @@
+model User {
+    id           String     @id @default(cuid())
+    name         String
+    phone        String     @unique
+    role         Role
+    status       UserStatus @default(ACTIVE)
+    isVerified   Boolean    @default(false)
+    tokenVersion Int        @default(0)
+    createdAt    DateTime   @default(now())
+    updatedAt    DateTime   @updatedAt
+
+    technicianProfile TechnicianProfile?
+    jobsAsCustomer    Job[]              @relation("CustomerJobs")
+    jobsAsTechnician  Job[]              @relation("TechnicianJobs")
+    bids              Bid[]              @relation("TechnicianBids")
+    reviewsWritten    Review[]           @relation("ReviewAuthor")
+    reviewsReceived   Review[]           @relation("ReviewTarget")
+    notifications     Notification[]
+    reportsFiled      Report[]           @relation("ReportFiler")
+    reportsResolved   Report[]           @relation("ReportResolver")
+    paymentsMade      Payment[]          @relation("PaymentPayer")
+    paymentsRecorded  Payment[]          @relation("PaymentRecorder")
+    auditLogs         AuditLog[]
+
+    @@index([role, status])
+    @@index([createdAt])
+}

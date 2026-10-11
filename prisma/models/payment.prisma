@@ -1,0 +1,21 @@
+model Payment {
+    id             String        @id @default(cuid())
+    jobId          String
+    payerId        String
+    method         PaymentMethod
+    amount         Int
+    status         PaymentStatus @default(INITIATED)
+    bkashPaymentId String?       @unique
+    trxId          String?       @unique
+    failureReason  String?
+    recordedById   String?
+    createdAt      DateTime      @default(now())
+    completedAt    DateTime?
+
+    job        Job   @relation(fields: [jobId], references: [id])
+    payer      User  @relation("PaymentPayer", fields: [payerId], references: [id])
+    recordedBy User? @relation("PaymentRecorder", fields: [recordedById], references: [id])
+
+    @@index([jobId, status])
+    @@index([payerId, createdAt])
+}
