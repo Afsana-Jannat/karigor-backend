@@ -1,17 +1,17 @@
 model Bid {
-    id           String    @id @default(cuid())
-    jobId        String
-    technicianId String
-    price        Int
-    note         String?
-    status       BidStatus @default(ACTIVE)
-    createdAt    DateTime  @default(now())
-    updatedAt    DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  jobId        String
+  technicianId String
+  price        Int
+  note         String?
+  status       BidStatus @default(ACTIVE)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-    job        Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-    technician User @relation("TechnicianBids", fields: [technicianId], references: [id])
+  job        Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  technician User @relation("TechnicianBids", fields: [technicianId], references: [id])
 
-    @@unique([jobId, technicianId])
-    @@index([jobId, status])
-    @@index([technicianId, status])
+  @@unique([jobId, technicianId])
+  @@index([jobId, status])
+  @@index([technicianId, status])
 }

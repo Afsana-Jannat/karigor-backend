@@ -1,28 +1,28 @@
 model TechnicianProfile {
-    userId          String       @id
-    age             Int
-    bio             String?
-    experienceYears Int
-    skills          String[]
-    areas           String[]
-    rateMin         Int?
-    rateMax         Int?
-    isAvailableNow  Boolean      @default(true)
-    photoUrl        String?
-    nidPublicId     String?
-    verifyStatus    VerifyStatus @default(NONE)
-    rejectReason    String?
-    ratingAvg       Float        @default(0)
-    ratingCount     Int          @default(0)
-    completedJobs   Int          @default(0)
-    createdAt       DateTime     @default(now())
-    updatedAt       DateTime     @updatedAt
+  userId          String       @id
+  age             Int
+  bio             String?
+  experienceYears Int
+  skills          String[]
+  areas           String[]
+  rateMin         Int?
+  rateMax         Int?
+  isAvailableNow  Boolean      @default(true)
+  photoUrl        String?
+  nidPublicId     String?
+  verifyStatus    VerifyStatus @default(NONE)
+  rejectReason    String?
+  ratingAvg       Float        @default(0)
+  ratingCount     Int          @default(0)
+  completedJobs   Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([skills], type: Gin)
-    @@index([areas], type: Gin)
-    @@index([verifyStatus])
-    @@index([isAvailableNow])
-    @@index([ratingAvg, ratingCount])
+  @@index([skills], type: Gin)
+  @@index([areas], type: Gin)
+  @@index([verifyStatus])
+  @@index([isAvailableNow])
+  @@index([ratingAvg, ratingCount])
 }

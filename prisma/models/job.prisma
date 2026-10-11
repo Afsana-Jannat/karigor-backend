@@ -1,37 +1,37 @@
 model Job {
-    id                  String         @id @default(cuid())
-    customerId          String
-    technicianId        String?
-    skill               String
-    area                String
-    description         String
-    preferredDate       DateTime
-    isEmergency         Boolean        @default(false)
-    status              JobStatus      @default(OPEN)
-    expiresAt           DateTime
-    statusBeforeDispute JobStatus?
-    agreedPrice         Int?
-    paymentMethod       PaymentMethod?
-    paidAt              DateTime?
-    cancelledBy         Role?
-    cancelReason        String?
-    completedAt         DateTime?
-    createdAt           DateTime       @default(now())
-    updatedAt           DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  customerId          String
+  technicianId        String?
+  skill               String
+  area                String
+  description         String
+  preferredDate       DateTime
+  isEmergency         Boolean        @default(false)
+  status              JobStatus      @default(OPEN)
+  expiresAt           DateTime
+  statusBeforeDispute JobStatus?
+  agreedPrice         Int?
+  paymentMethod       PaymentMethod?
+  paidAt              DateTime?
+  cancelledBy         Role?
+  cancelReason        String?
+  completedAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
-    customer      User           @relation("CustomerJobs", fields: [customerId], references: [id])
-    technician    User?          @relation("TechnicianJobs", fields: [technicianId], references: [id])
-    bids          Bid[]
-    contract      Contract?
-    review        Review?
-    reports       Report[]
-    payments      Payment[]
-    notifications Notification[]
+  customer      User           @relation("CustomerJobs", fields: [customerId], references: [id])
+  technician    User?          @relation("TechnicianJobs", fields: [technicianId], references: [id])
+  bids          Bid[]
+  contract      Contract?
+  review        Review?
+  reports       Report[]
+  payments      Payment[]
+  notifications Notification[]
 
-    @@index([customerId, status])
-    @@index([technicianId, status])
-    @@index([status, skill, area])
-    @@index([status, expiresAt])
-    @@index([status, updatedAt])
-    @@index([createdAt])
+  @@index([customerId, status])
+  @@index([technicianId, status])
+  @@index([status, skill, area])
+  @@index([status, expiresAt])
+  @@index([status, updatedAt])
+  @@index([createdAt])
 }
