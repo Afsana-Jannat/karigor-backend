@@ -1,12 +1,15 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
-
+import { env } from './config/env.js';
+import { globalErrorHandler } from './app/middlewares/globalErrorHandler.js';
+import { notFound } from './app/middlewares/notFound.js';
+import routes from './app/routes/index.js';
 const app = express();
-
+app.disable('x-powered-by');
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: env.CLIENT_URL,
     credentials: true,
   })
 );
@@ -30,4 +33,10 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// All API routes live under /api/v1
+app.use('/api/v1', routes);
+
+// These two must stay last
+app.use(notFound);
+app.use(globalErrorHandler);
 export default app;
