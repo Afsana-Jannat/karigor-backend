@@ -1,9 +1,16 @@
-import {prisma} from "../src/lib/prisma"
+// Fixed named import and added absolute ESM .js file extension resolution
+import { prisma } from '../src/lib/prisma.js';
 
 async function main() {
   console.log('🌱 Starting database seeding on Neon DB...');
 
+   await prisma.review.deleteMany({});
+  await prisma.bid.deleteMany({});
+  await prisma.job.deleteMany({});
+  await prisma.technicianProfile.deleteMany({});
+  await prisma.notification.deleteMany({});
   // 1. Clean existing records to avoid unique constraint collisions
+  // (Because of onDelete: Cascade in your schema, deleting users automatically deletes profiles)
   await prisma.user.deleteMany({});
 
   // 2. Create Active Customer
@@ -18,7 +25,7 @@ async function main() {
     },
   });
 
-  // 3. Create Active Technician
+  // 3. Create Active Technician with integrated profile relation execution
   const technician = await prisma.user.create({
     data: {
       name: 'Jane Smith',
@@ -27,6 +34,26 @@ async function main() {
       status: 'ACTIVE',
       isVerified: true,
       tokenVersion: 1,
+      technicianProfile: {
+        create: {
+          age: 28,
+          bio: 'Professional certified electrician with a decade of field experience troubleshooting residential grids.',
+          experienceYears: 8,
+          skills: ['Electrical', 'Wiring', 'Generator Repair'],
+          areas: ['Mirpur', 'Dhanmondi', 'Gulshan'],
+          rateMin: 500,
+          rateMax: 2500,
+          isAvailableNow: true,
+          photoUrl: 'https://example.com',
+          verifyStatus: 'VERIFIED',
+          ratingAvg: 4.8,
+          ratingCount: 15,
+          completedJobs: 42,
+        },
+      },
+    },
+    include: {
+      technicianProfile: true,
     },
   });
 
@@ -41,6 +68,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    // Notice: Cleaned up dynamic string resolution for ESM compatibility
     await prisma.$disconnect();
   });

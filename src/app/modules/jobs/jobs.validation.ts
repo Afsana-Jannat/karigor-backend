@@ -53,3 +53,12 @@ export const jobIdParamsSchema = z.object({
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type ListJobsQuery = z.infer<typeof listJobsQuerySchema>;
+
+
+
+export const openJobsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(20).default(10),
+});
+
+export type OpenJobsQuery = z.infer<typeof openJobsQuerySchema>;

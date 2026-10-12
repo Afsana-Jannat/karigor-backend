@@ -46,7 +46,7 @@ export async function createJob(customerId: string, input: CreateJobInput) {
           where: { id: customerId },
           select: { id: true, role: true, status: true },
         });
-
+console.log(customer)
         if (
           !customer ||
           customer.role !== 'CUSTOMER' ||
@@ -162,8 +162,9 @@ export async function getMyJobs(
     now.getTime() - NORMAL_EXPIRY_HOURS * 60 * 60 * 1000,
   );
 
-  await prisma.$transaction(async (tx) => {
-    const expiredPendingJobs = await tx.job.findMany({
+  // ১. ট্রানজেকশন (async tx) বাদ দিয়ে সরাসরি কুয়েরি দিয়ে এক্সপায়ার্ড জব ক্লিন করুন (Non-blocking)
+  try {
+    const expiredPendingJobs = await prisma.job.findMany({
       where: {
         status: 'CONTRACT_PENDING',
         updatedAt: { lte: contractExpiry },
@@ -171,7 +172,7 @@ export async function getMyJobs(
       select: { id: true },
     });
 
-    await tx.job.updateMany({
+    await prisma.job.updateMany({
       where: {
         status: 'OPEN',
         expiresAt: { lte: now },
@@ -185,7 +186,7 @@ export async function getMyJobs(
     if (expiredPendingJobs.length > 0) {
       const expiredIds = expiredPendingJobs.map((job) => job.id);
 
-      await tx.job.updateMany({
+      await prisma.job.updateMany({
         where: {
           id: { in: expiredIds },
           status: 'CONTRACT_PENDING',
@@ -197,7 +198,7 @@ export async function getMyJobs(
         },
       });
 
-      await tx.contract.updateMany({
+      await prisma.contract.updateMany({
         where: {
           jobId: { in: expiredIds },
           status: 'PENDING',
@@ -205,8 +206,12 @@ export async function getMyJobs(
         data: { status: 'VOID' },
       });
     }
-  });
+  } catch (cleanupError) {
+    // ক্লিনিং প্রসেস ফেইল করলেও যেন ইউজারের জবের লিস্ট লোড হওয়া আটকে না যায়
+    console.error('🧹 Background job cleanup failed:', cleanupError);
+  }
 
+  // ২. ফিল্টার কন্ডিশন তৈরি
   const where: Prisma.JobWhereInput = {
     ...(role === 'CUSTOMER'
       ? { customerId: userId }
@@ -214,7 +219,8 @@ export async function getMyJobs(
     ...(query.status ? { status: query.status } : {}),
   };
 
-  const [jobs, total] = await prisma.$transaction([
+  // ৩. ট্রানজেকশন স্কিপ করে সাধারণ Promise.all দিয়ে সমান্তরালভাবে ডেটা ও কাউন্ট রিড করুন
+  const [jobs, total] = await Promise.all([
     prisma.job.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -240,6 +246,7 @@ export async function getMyJobs(
     prisma.job.count({ where }),
   ]);
 
+  // ৪. রেসপন্স ফরম্যাটিং
   const data = jobs.map((job) => ({
     id: job.id,
     skill: job.skill,
@@ -249,14 +256,154 @@ export async function getMyJobs(
     agreedPrice: job.agreedPrice,
     createdAt: job.createdAt,
     bidCount: job.status === 'OPEN' ? job._count.bids : undefined,
-    counterpart:
-      role === 'CUSTOMER'
-        ? job.technician
-        : job.customer,
+    counterpart: role === 'CUSTOMER' ? job.technician : job.customer,
   }));
 
   return {
     data,
+    meta: {
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      totalPages: Math.ceil(total / query.pageSize),
+    },
+  };
+}
+
+
+
+
+import type { OpenJobsQuery } from './jobs.validation.js';
+
+export async function getOpenJobs(
+  technicianId: string,
+  query: OpenJobsQuery,
+) {
+  const now = new Date();
+  const contractExpiry = new Date(
+    now.getTime() - 48 * 60 * 60 * 1000,
+  );
+
+  // Lazy expiry: expire stale jobs without opening a transaction.
+  await prisma.job.updateMany({
+    where: {
+      status: 'OPEN',
+      expiresAt: { lte: now },
+    },
+    data: {
+      status: 'CANCELLED',
+      cancelReason: 'EXPIRED',
+    },
+  });
+
+  const staleContracts = await prisma.job.findMany({
+    where: {
+      status: 'CONTRACT_PENDING',
+      updatedAt: { lte: contractExpiry },
+    },
+    select: { id: true },
+  });
+
+  if (staleContracts.length > 0) {
+    const staleJobIds = staleContracts.map((job) => job.id);
+
+    await prisma.job.updateMany({
+      where: {
+        id: { in: staleJobIds },
+        status: 'CONTRACT_PENDING',
+        updatedAt: { lte: contractExpiry },
+      },
+      data: {
+        status: 'CANCELLED',
+        cancelReason: 'EXPIRED',
+      },
+    });
+
+    await prisma.contract.updateMany({
+      where: {
+        jobId: { in: staleJobIds },
+        status: 'PENDING',
+      },
+      data: { status: 'VOID' },
+    });
+  }
+
+  const profile = await prisma.technicianProfile.findUnique({
+    where: { userId: technicianId },
+    select: {
+      skills: true,
+      areas: true,
+    },
+  });
+
+  if (!profile) {
+    throw new AppError(
+      'CONFLICT',
+      'Please create your technician profile first',
+    );
+  }
+
+  const where: Prisma.JobWhereInput = {
+    status: 'OPEN',
+    expiresAt: { gt: now },
+    skill: { in: profile.skills },
+    area: { in: profile.areas },
+  };
+
+  const [jobs, total] = await prisma.$transaction([
+    prisma.job.findMany({
+      where,
+      orderBy: [
+        { isEmergency: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        skill: true,
+        area: true,
+        description: true,
+        preferredDate: true,
+        isEmergency: true,
+        expiresAt: true,
+        createdAt: true,
+        customer: {
+          select: { name: true },
+        },
+        _count: {
+          select: {
+            bids: {
+              where: { status: 'ACTIVE' },
+            },
+          },
+        },
+        bids: {
+          where: { technicianId },
+          select: {
+            price: true,
+            status: true,
+          },
+          take: 1,
+        },
+      },
+    }),
+    prisma.job.count({ where }),
+  ]);
+
+  return {
+    data: jobs.map((job) => ({
+      id: job.id,
+      skill: job.skill,
+      area: job.area,
+      description: job.description,
+      preferredDate: job.preferredDate,
+      isEmergency: job.isEmergency,
+      expiresAt: job.expiresAt,
+      bidCount: job._count.bids,
+      customerName: job.customer.name.split(' ')[0],
+      myBid: job.bids[0] ?? null,
+    })),
     meta: {
       page: query.page,
       pageSize: query.pageSize,

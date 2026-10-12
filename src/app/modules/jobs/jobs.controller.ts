@@ -6,6 +6,9 @@ import { sendResponse } from '../../utils/sendResponse.js';
 import { createJob, getMyJobs } from './jobs.service.js';
 import type { ListJobsQuery } from './jobs.validation.js';
 
+import { getOpenJobs } from './jobs.service.js';
+import type { OpenJobsQuery } from './jobs.validation.js';
+
 type AuthenticatedRequest = Request & {
   user?: {
     id: string;
@@ -16,7 +19,7 @@ type AuthenticatedRequest = Request & {
 export const createJobController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
-    const user = {id:"cmv59ex3s0000ssvbweozbmkn",
+    const user = {id:"cmv5jbdns0000r4vbz28p4mjx",
         role:"CUSTOMER"
     };
 
@@ -40,7 +43,10 @@ export const createJobController = catchAsync(
 export const getMyJobsController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
-    const user = authReq.user;
+    // const user = authReq.user;
+    const user = {id:"cmv5jbdns0000r4vbz28p4mjx",
+        role:"CUSTOMER"
+    };
 
     if (!user) {
       throw new AppError('UNAUTHENTICATED', 'Please log in first');
@@ -55,6 +61,35 @@ export const getMyJobsController = catchAsync(
 
     const query = req.query as unknown as ListJobsQuery;
     const result = await getMyJobs(user.id, user.role, query);
+
+    sendResponse(res, {
+      data: result.data,
+      meta: result.meta,
+    });
+  },
+);
+
+
+export const getOpenJobsController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    // const user = authReq.user;
+    const user = {id:"cmv5jbe590001r4vbt5pvemwa",
+        role:"TECHNICIAN"
+    };
+    if (!user) {
+      throw new AppError('UNAUTHENTICATED', 'Please log in first');
+    }
+
+    if (user.role !== 'TECHNICIAN') {
+      throw new AppError(
+        'FORBIDDEN',
+        'Only technicians can view the open jobs feed',
+      );
+    }
+
+    const query = req.query as unknown as OpenJobsQuery;
+    const result = await getOpenJobs(user.id, query);
 
     sendResponse(res, {
       data: result.data,
