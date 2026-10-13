@@ -11,23 +11,24 @@ import {
   listJobsQuerySchema,
   openJobsQuerySchema,
 } from './jobs.validation.js';
+import { authenticate } from '../../middlewares/authenticate.js';
 
 const router = Router();
 
 router.post(
-  '/',
+  '/',authenticate,
   validateRequest({ body: createJobSchema }),
   createJobController,
 );
 
 router.get(
-  '/',
+  '/',authenticate,
   validateRequest({ query: listJobsQuerySchema }),
   getMyJobsController,
 );
 
 router.get(
-  '/open',
+  '/open',authenticate,
   validateRequest({ query: openJobsQuerySchema }),
   getOpenJobsController,
 );

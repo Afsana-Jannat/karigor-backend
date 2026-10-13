@@ -19,9 +19,7 @@ type AuthenticatedRequest = Request & {
 export const createJobController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
-    const user = {id:"cmv5jbdns0000r4vbz28p4mjx",
-        role:"CUSTOMER"
-    };
+    const user = authReq.user;
 
     if (!user) {
       throw new AppError('UNAUTHENTICATED', 'Please log in first');
@@ -43,10 +41,8 @@ export const createJobController = catchAsync(
 export const getMyJobsController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
-    // const user = authReq.user;
-    const user = {id:"cmv5jbdns0000r4vbz28p4mjx",
-        role:"CUSTOMER"
-    };
+    const user = authReq.user;
+   
 
     if (!user) {
       throw new AppError('UNAUTHENTICATED', 'Please log in first');
@@ -73,10 +69,8 @@ export const getMyJobsController = catchAsync(
 export const getOpenJobsController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
-    // const user = authReq.user;
-    const user = {id:"cmv5jbe590001r4vbt5pvemwa",
-        role:"TECHNICIAN"
-    };
+    const user = authReq.user;
+    
     if (!user) {
       throw new AppError('UNAUTHENTICATED', 'Please log in first');
     }
