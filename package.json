@@ -36,7 +36,7 @@
     "nodemailer": "^9.0.5",
     "pdfkit": "^0.20.1",
     "pg": "^8.22.0",
-    "redis": "^6.2.0",
+    "redis": "^6.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
