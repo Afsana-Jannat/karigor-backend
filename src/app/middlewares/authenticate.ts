@@ -16,13 +16,11 @@ export type AuthenticatedRequest = Request & {
 export const authenticate = catchAsync(
 	async (req: Request, _res: Response, next: NextFunction) => {
 		const request = req as AuthenticatedRequest;
-		const authorization = request.headers.authorization;
-
-		if (!authorization?.startsWith("Bearer ")) {
-			throw new AppError("UNAUTHENTICATED");
-		}
-
-		const token = authorization.slice(7).trim();
+        const token = req.cookies.accessToken
+			? req.cookies.accessToken
+			: req.headers.authorization?.startsWith("Bearer ")
+				? req.headers.authorization?.split(" ")[1]
+				: req.headers.authorization;
 
 		if (!token) {
 			throw new AppError("UNAUTHENTICATED");
