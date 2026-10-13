@@ -11,7 +11,9 @@ const booleanString = (fallback: 'true' | 'false') =>
     .transform((v) => v === 'true');
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
   CLIENT_URL: z.string().default('http://localhost:3000'),
   BACKEND_URL: z.string().default('http://localhost:5000'),
@@ -28,8 +30,14 @@ const envSchema = z.object({
   REDIS_HOST: z.string().optional(),
   REDIS_PORT: z.coerce.number().int().positive().optional(),
 
-  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters').optional(),
-  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters').optional(),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, 'JWT_ACCESS_SECRET must be at least 32 characters')
+    .optional(),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32, 'JWT_REFRESH_SECRET must be at least 32 characters')
+    .optional(),
   JWT_ACCESS_EXPIRES_IN: z.string().default('1d'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
@@ -42,10 +50,22 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().optional(),
 });
 
+const redisConfigured = Boolean(
+  process.env.REDIS_HOST && process.env.REDIS_PORT
+);
+
+if (redisConfigured && !process.env.REDIS_PASSWORD) {
+  console.warn(
+    '[env] REDIS_PASSWORD is not configured. Check whether your Redis provider requires authentication.'
+  );
+}
+
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  const lines = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
+  const lines = parsed.error.issues.map(
+    (i) => `  - ${i.path.join('.')}: ${i.message}`
+  );
   throw new Error(`Invalid environment variables:\n${lines.join('\n')}`);
 }
 
