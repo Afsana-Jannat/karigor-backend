@@ -3,6 +3,7 @@ import { healthRoutes } from '../modules/health/health.route.js';
 import { jobsRoutes } from '../modules/jobs/jobs.route.js';
 import { bidsRoutes } from '../modules/bids/bids.route.js';
 import { authRoutes } from "../modules/auth/auth.route.js";
+import { contractsRoutes } from '../modules/contracts/contracts.route.js';
 
 
 const router = Router();
@@ -15,6 +16,7 @@ const moduleRoutes = [
   {path: "/bids", route: bidsRoutes},
 	{ path: "/health", route: healthRoutes },
 	{ path: "/auth", route: authRoutes },
+  { path: '/jobs', route: contractsRoutes },
 ];
 
 for (const { path, route } of moduleRoutes) {

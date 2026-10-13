@@ -18,6 +18,7 @@ export const createOrUpdateBidController = catchAsync(
     const authReq = req as AuthenticatedRequest;
     const user = authReq.user;
 
+    console.log(user)
     if (!user) {
       throw new AppError(
         'UNAUTHENTICATED',
