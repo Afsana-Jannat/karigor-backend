@@ -1,8 +1,8 @@
-import type { Request, Response } from 'express';
-import { AppError } from '../../errors/AppError.js';
-import type { AuthenticatedRequest } from '../../middlewares/authenticate.js';
-import { catchAsync } from '../../utils/catchAsync.js';
-import { sendResponse } from '../../utils/sendResponse.js';
+import type { Request, Response } from "express";
+import { AppError } from "../../errors/AppError.js";
+import type { AuthenticatedRequest } from "../../middlewares/authenticate.js";
+import { catchAsync } from "../../utils/catchAsync.js";
+import { sendResponse } from "../../utils/sendResponse.js";
 import {
   getCurrentUser,
   logoutUser,
@@ -11,7 +11,7 @@ import {
   requestLoginOtp,
   verifyLoginOtp,
   verifyOtp,
-} from './auth.service.js';
+} from "./auth.service.js";
 
 export const registerController = catchAsync(
   async (req: Request, res: Response) => {
@@ -20,7 +20,7 @@ export const registerController = catchAsync(
     sendResponse(res, {
       data: result,
     });
-  }
+  },
 );
 
 export const verifyOtpController = catchAsync(
@@ -30,13 +30,13 @@ export const verifyOtpController = catchAsync(
     const result = await verifyOtp(phone, otp);
 
     if (!result.verified) {
-      throw new AppError('OTP_INVALID');
+      throw new AppError("OTP_INVALID");
     }
 
     sendResponse(res, {
       data: result,
     });
-  }
+  },
 );
 
 // Request OTP for an existing account.
@@ -49,7 +49,7 @@ export const requestLoginOtpController = catchAsync(
     sendResponse(res, {
       data: result,
     });
-  }
+  },
 );
 
 // Verify login OTP and issue JWT tokens.
@@ -59,13 +59,13 @@ export const verifyLoginOtpController = catchAsync(
 
     const result = await verifyLoginOtp(phone, otp);
 
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = process.env.NODE_ENV === "production";
 
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
+      sameSite: isProduction ? "none" : "lax",
+      path: "/api/v1/auth",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -75,40 +75,40 @@ export const verifyLoginOtpController = catchAsync(
         accessToken: result.accessToken,
       },
     });
-  }
+  },
 );
 
 export const refreshTokenController = catchAsync(
   async (req: Request, res: Response) => {
     const refreshToken = req.cookies?.refreshToken;
 
-    if (!refreshToken || typeof refreshToken !== 'string') {
-      throw new AppError('UNAUTHENTICATED', 'Refresh token is required.');
+    if (!refreshToken || typeof refreshToken !== "string") {
+      throw new AppError("UNAUTHENTICATED", "Refresh token is required.");
     }
 
     const result = await refreshSession(refreshToken);
 
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = process.env.NODE_ENV === "production";
 
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
+      sameSite: isProduction ? "none" : "lax",
+      path: "/api/v1/auth",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    res.cookie('accessToken', result.accessToken, {
+    res.cookie("accessToken", result.accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
+      sameSite: isProduction ? "none" : "lax",
+      path: "/api/v1",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     sendResponse(res, {
       data: { accessToken: result.accessToken },
     });
-  }
+  },
 );
 
 export const checkAuthController = catchAsync(
@@ -116,7 +116,7 @@ export const checkAuthController = catchAsync(
     const userId = req.user?.id;
 
     if (!userId) {
-      throw new AppError('UNAUTHENTICATED');
+      throw new AppError("UNAUTHENTICATED");
     }
 
     const result = await getCurrentUser(userId);
@@ -124,7 +124,7 @@ export const checkAuthController = catchAsync(
     sendResponse(res, {
       data: { user: result },
     });
-  }
+  },
 );
 
 export const logoutController = catchAsync(
@@ -132,20 +132,20 @@ export const logoutController = catchAsync(
     const userId = req.user?.id;
 
     if (!userId) {
-      throw new AppError('UNAUTHENTICATED');
+      throw new AppError("UNAUTHENTICATED");
     }
 
     const result = await logoutUser(userId);
 
-    res.clearCookie('refreshToken', {
+    res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/api/v1/auth',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/api/v1/auth",
     });
 
     sendResponse(res, {
       data: result,
     });
-  }
+  },
 );
