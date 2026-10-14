@@ -359,6 +359,51 @@ export async function verifyOtp(phone: string, otp: string) {
 	};
 }
 
+// export async function verifyLoginOtp(phone: string, otp: string) {
+// 	await verifyOtpForPurpose(phone, otp, "login");
+
+// 	const user = await prisma.user.findUnique({
+// 		where: { phone },
+// 		select: {
+// 			id: true,
+// 			phone: true,
+// 			name: true,
+// 			role: true,
+// 			status: true,
+// 			isVerified: true,
+// 			tokenVersion: true,
+// 		},
+// 	});
+
+// 	if (!user?.isVerified) {
+// 		throw new AppError(
+// 			"UNAUTHENTICATED",
+// 			"This account is unavailable for login.",
+// 		);
+// 	}
+
+// 	if (user.status !== "ACTIVE") {
+// 		throw new AppError("FORBIDDEN", "This account is not active.");
+// 	}
+
+// 	const tokenPayload = {
+// 		userId: user.id,
+// 		role: user.role,
+// 		tokenVersion: user.tokenVersion,
+// 	};
+
+// 	return {
+// 		user: {
+// 			id: user.id,
+// 			phone: user.phone,
+// 			name: user.name,
+// 			role: user.role,
+// 		},
+// 		accessToken: generateAccessToken(tokenPayload),
+// 		refreshToken: generateRefreshToken(tokenPayload),
+// 	};
+// }
+
 export async function verifyLoginOtp(phone: string, otp: string) {
 	await verifyOtpForPurpose(phone, otp, "login");
 
@@ -392,6 +437,16 @@ export async function verifyLoginOtp(phone: string, otp: string) {
 		tokenVersion: user.tokenVersion,
 	};
 
+	const accessToken = generateAccessToken(tokenPayload);
+	const refreshToken = generateRefreshToken(tokenPayload);
+
+	if (process.env.NODE_ENV === "development") {
+		console.log("\n===== LOGIN OTP VERIFIED =====");
+		console.log("Access Token:", accessToken);
+		console.log("Refresh Token:", refreshToken);
+		console.log("==============================\n");
+	}
+
 	return {
 		user: {
 			id: user.id,
@@ -399,10 +454,50 @@ export async function verifyLoginOtp(phone: string, otp: string) {
 			name: user.name,
 			role: user.role,
 		},
-		accessToken: generateAccessToken(tokenPayload),
-		refreshToken: generateRefreshToken(tokenPayload),
+		accessToken,
+		refreshToken,
 	};
 }
+
+// export async function refreshSession(refreshToken: string) {
+//   const payload = verifyRefreshToken(refreshToken);
+
+//   const user = await prisma.user.findUnique({
+//     where: { id: payload.userId },
+//     select: {
+//       id: true,
+//       role: true,
+//       status: true,
+//       isVerified: true,
+//       tokenVersion: true,
+//     },
+//   });
+
+//   if (!user?.isVerified || user.status !== 'ACTIVE') {
+//     throw new AppError('UNAUTHENTICATED', 'Your session is no longer valid.');
+//   }
+
+//   if (
+//     user.tokenVersion !== payload.tokenVersion ||
+//     user.role !== payload.role
+//   ) {
+//     throw new AppError(
+//       'UNAUTHENTICATED',
+//       'Your session has expired. Please log in again.'
+//     );
+//   }
+
+//   const tokenPayload = {
+//     userId: user.id,
+//     role: user.role,
+//     tokenVersion: user.tokenVersion,
+//   };
+
+//   return {
+//     accessToken: generateAccessToken(tokenPayload),
+//     refreshToken: generateRefreshToken(tokenPayload),
+//   };
+// }
 
 export async function refreshSession(refreshToken: string) {
 	const payload = verifyRefreshToken(refreshToken);
@@ -438,9 +533,19 @@ export async function refreshSession(refreshToken: string) {
 		tokenVersion: user.tokenVersion,
 	};
 
+	const accessToken = generateAccessToken(tokenPayload);
+	const newRefreshToken = generateRefreshToken(tokenPayload);
+
+	if (process.env.NODE_ENV === "development") {
+		console.log("\n===== SESSION REFRESHED =====");
+		console.log("New Access Token:", accessToken);
+		console.log("New Refresh Token:", newRefreshToken);
+		console.log("=============================\n");
+	}
+
 	return {
-		accessToken: generateAccessToken(tokenPayload),
-		refreshToken: generateRefreshToken(tokenPayload),
+		accessToken,
+		refreshToken: newRefreshToken,
 	};
 }
 

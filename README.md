@@ -13,4 +13,3 @@ GET /api/v1/jobs
 GET /api/v1/jobs/open
 POST /api/v1/bids/:id/bid
 POST api/v1/jobs/:id/bids/:bidId/select
-
