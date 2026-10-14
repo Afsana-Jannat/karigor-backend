@@ -245,3 +245,48 @@ export async function selectBidAndCreateContract(
     };
   });
 }
+
+
+export const getJobContract = async (
+  jobId: string,
+  userId: string,
+  userRole: "CUSTOMER" | "TECHNICIAN" | "ADMIN",
+) => {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      customerId: true,
+      technicianId: true,
+      contract: {
+        select: {
+          id: true,
+          content: true,
+          contentHash: true,
+          status: true,
+          customerSignedAt: true,
+          technicianSignedAt: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!job) {
+    throw new AppError("NOT_FOUND", "Job not found");
+  }
+
+  const isParty =
+    job.customerId === userId ||
+    job.technicianId === userId;
+
+  if (userRole !== "ADMIN" && !isParty) {
+    throw new AppError("NOT_FOUND", "Contract not found");
+  }
+
+  if (!job.contract) {
+    throw new AppError("NOT_FOUND", "Contract not found");
+  }
+
+  return job.contract;
+};

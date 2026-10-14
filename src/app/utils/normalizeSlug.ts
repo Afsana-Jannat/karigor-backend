@@ -1,3 +1,4 @@
+import { string } from "zod";
 import { AREAS, SKILLS } from "../../constants";
 
 

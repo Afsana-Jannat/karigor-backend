@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { selectBidAndCreateContract } from './contracts.service.js';
+import { getJobContract, selectBidAndCreateContract } from './contracts.service.js';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -43,6 +43,30 @@ export const selectBidController = catchAsync(
     sendResponse(res, {
       statusCode: 200,
       data: result,
+    });
+  },
+);
+
+
+export const getJobContractController = catchAsync(
+  async (req, res) => {
+        const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+
+    if (!user) {
+      throw new AppError('UNAUTHENTICATED', 'Please log in first');
+    }
+    const { id } = req.params;
+
+    const contract = await getJobContract(
+      id as string,
+      user.id,
+      user.role,
+    );
+
+    sendResponse(res, {
+      statusCode: 200,
+      data: contract,
     });
   },
 );
