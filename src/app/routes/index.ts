@@ -17,6 +17,7 @@ const moduleRoutes = [
 	{ path: "/health", route: healthRoutes },
 	{ path: "/auth", route: authRoutes },
   { path: '/jobs', route: contractsRoutes },
+  { path: '/contracts', route: contractsRoutes },
 ];
 
 for (const { path, route } of moduleRoutes) {

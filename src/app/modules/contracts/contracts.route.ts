@@ -2,8 +2,8 @@
 import { Router } from 'express';
 
 import { validateRequest } from '../../middlewares/validateRequest.js';
-import { getJobContractController, selectBidController } from './contracts.controller.js';
-import { selectBidParamsSchema } from './contracts.validation.js';
+import { getJobContractController, requestContractSignOtpController, selectBidController, signContractController } from './contracts.controller.js';
+import { selectBidParamsSchema, signContractBodySchema, signContractParamsSchema} from './contracts.validation.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 
 const router = Router();
@@ -17,6 +17,21 @@ router.get(
   "/:id/contract",
   authenticate,
   getJobContractController,
+);
+router.post(
+  '/:id/sign-otp',
+  authenticate,
+  requestContractSignOtpController,
+);
+
+router.post(
+  '/:id/sign',
+ authenticate,
+  validateRequest({
+    params: signContractParamsSchema,
+    body: signContractBodySchema
+  }),
+  signContractController,
 );
 
 export const contractsRoutes = router;

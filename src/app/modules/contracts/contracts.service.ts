@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import { prisma } from '../../../lib/prisma.js';
 import { AREAS, SKILLS } from '../../../constants';
 import { AppError } from '../../errors/AppError.js';
+import { issueContractOtp, verifyContractOtp } from './contracts.otp.js';
+import { redis } from '../../../lib/redis.js';
 
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -290,3 +292,258 @@ export const getJobContract = async (
 
   return job.contract;
 };
+
+export const requestContractSignOtp = async (
+  contractId: string,
+  userId: string,
+) => {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      status: true,
+      customerSignedAt: true,
+      technicianSignedAt: true,
+      job: {
+        select: {
+          customerId: true,
+          technicianId: true,
+          customer: {
+            select: { phone: true },
+          },
+          technician: {
+            select: { phone: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  const { job } = contract;
+
+  const isCustomer = job.customerId === userId;
+  const isTechnician = job.technicianId === userId;
+
+  if (!isCustomer && !isTechnician) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  if (contract.status !== 'PENDING') {
+    throw new AppError('INVALID_STATUS', 'Contract is not pending');
+  }
+
+  if (
+    (isCustomer && contract.customerSignedAt) ||
+    (isTechnician && contract.technicianSignedAt)
+  ) {
+    throw new AppError('CONFLICT', 'You have already signed this contract');
+  }
+
+  const phone = isCustomer
+    ? job.customer.phone
+    : job.technician?.phone;
+
+  if (!phone) {
+    throw new AppError('NOT_FOUND', 'Phone number not found');
+  }
+
+  return issueContractOtp({
+    contractId,
+    phone,
+  });
+};
+
+
+
+export async function signContract(
+  contractId: string,
+  userId: string,
+  otp: string,
+) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      status: true,
+      customerSignedAt: true,
+      technicianSignedAt: true,
+      job: {
+        select: {
+          customerId: true,
+          technicianId: true,
+          customer: { select: { phone: true } },
+          technician: { select: { phone: true } },
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  const { job } = contract;
+  const isCustomer = job.customerId === userId;
+  const isTechnician = job.technicianId === userId;
+
+  if (!isCustomer && !isTechnician) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  if (contract.status !== 'PENDING') {
+    throw new AppError('INVALID_STATUS', 'Contract is not pending');
+  }
+
+  if (
+    (isCustomer && contract.customerSignedAt) ||
+    (isTechnician && contract.technicianSignedAt)
+  ) {
+    throw new AppError(
+      'CONFLICT',
+      'You have already signed this contract',
+    );
+  }
+
+  const phone = isCustomer
+    ? job.customer.phone
+    : job.technician?.phone;
+
+  if (!phone) {
+    throw new AppError('NOT_FOUND', 'Phone number not found');
+  }
+
+  const otpKey = `otp:CONTRACT:${contractId}:${phone}`;
+
+  await verifyContractOtp(contractId, phone, otp);
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Lock the contract row to prevent concurrent signature updates.
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "Contract"
+      WHERE "id" = ${contractId}
+      FOR UPDATE
+    `;
+
+    const current = await tx.contract.findUnique({
+      where: { id: contractId },
+      select: {
+        status: true,
+        customerSignedAt: true,
+        technicianSignedAt: true,
+        job: {
+          select: {
+            id: true,
+            customerId: true,
+            technicianId: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!current || current.status !== 'PENDING') {
+      throw new AppError(
+        'INVALID_STATUS',
+        'Contract is no longer pending',
+      );
+    }
+
+    if (
+      current.job.customerId !== userId &&
+      current.job.technicianId !== userId
+    ) {
+      throw new AppError('FORBIDDEN', 'You cannot sign this contract');
+    }
+
+    if (
+      (isCustomer && current.customerSignedAt) ||
+      (isTechnician && current.technicianSignedAt)
+    ) {
+      throw new AppError(
+        'CONFLICT',
+        'You have already signed this contract',
+      );
+    }
+
+    if (current.job.status !== 'CONTRACT_PENDING') {
+      throw new AppError(
+        'INVALID_STATUS',
+        'Job is not awaiting contract signatures',
+      );
+    }
+
+    const signedAt = new Date();
+
+    if (isCustomer) {
+      await tx.contract.update({
+        where: { id: contractId },
+        data: { customerSignedAt: signedAt },
+      });
+    } else {
+      await tx.contract.update({
+        where: { id: contractId },
+        data: { technicianSignedAt: signedAt },
+      });
+    }
+
+    const bothSigned = Boolean(
+      (isCustomer ? signedAt : current.customerSignedAt) &&
+      (isTechnician ? signedAt : current.technicianSignedAt),
+    );
+
+    if (bothSigned) {
+      await tx.contract.update({
+        where: { id: contractId },
+        data: { status: 'SIGNED' },
+      });
+
+      const jobUpdate = await tx.job.updateMany({
+        where: {
+          id: current.job.id,
+          status: 'CONTRACT_PENDING',
+        },
+        data: { status: 'IN_PROGRESS' },
+      });
+
+      if (jobUpdate.count !== 1) {
+        throw new AppError(
+          'CONFLICT',
+          'Job status changed. Please try again',
+        );
+      }
+
+      await tx.notification.createMany({
+        data: [
+          {
+            userId: current.job.customerId,
+            jobId: current.job.id,
+            type: 'CONTRACT_SIGNED',
+          },
+          ...(current.job.technicianId
+            ? [{
+                userId: current.job.technicianId,
+                jobId: current.job.id,
+                type: 'CONTRACT_SIGNED' as const,
+              }]
+            : []),
+        ],
+      });
+    }
+
+    return {
+      contractId,
+      signed: true,
+      contractStatus: bothSigned ? 'SIGNED' : 'PENDING',
+      jobStatus: bothSigned ? 'IN_PROGRESS' : 'CONTRACT_PENDING',
+      bothPartiesSigned: bothSigned,
+    };
+  });
+
+  // Consume the OTP after the database transaction succeeds.
+  await redis.del(otpKey);
+
+  return result;
+}

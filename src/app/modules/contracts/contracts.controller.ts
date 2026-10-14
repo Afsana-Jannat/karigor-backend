@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { getJobContract, selectBidAndCreateContract } from './contracts.service.js';
+import { getJobContract, requestContractSignOtp, selectBidAndCreateContract, signContract } from './contracts.service.js';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -67,6 +67,55 @@ export const getJobContractController = catchAsync(
     sendResponse(res, {
       statusCode: 200,
       data: contract,
+    });
+  },
+);
+
+export const requestContractSignOtpController = catchAsync(
+  async (req, res) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+
+    if (!user) {
+      throw new AppError(
+        'UNAUTHENTICATED',
+        'Please log in first',
+      );
+    }
+
+    const { id } = req.params;
+
+    const data = await requestContractSignOtp(id as string, user.id);
+
+    sendResponse(res, {
+      statusCode: 200,
+      data,
+    });
+  },
+);
+
+
+
+export const signContractController = catchAsync(
+  async (req, res) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+
+    if (!user) {
+      throw new AppError(
+        'UNAUTHENTICATED',
+        'Please log in first',
+      );
+    }
+
+    const { id } = req.params;
+    const { otp } = req.body;
+
+    const data = await signContract(id as string, user.id, otp);
+
+    sendResponse(res, {
+      statusCode: 200,
+      data,
     });
   },
 );
