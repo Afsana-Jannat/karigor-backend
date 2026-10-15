@@ -1,10 +1,11 @@
 import type { Request } from 'express';
 import { buildMeta, sendResponse } from '../../utils/sendResponse.js';
 import { catchAsync } from '../../utils/catchAsync.js';
-import { getTechnicianByIdDB, getTechnicianReviewsDB, searchTechnicians, upsertProfileDB } from './technician.service.js';
+import { extractAnswer, extractAnswerFromAudio, getMyProfileDB, getTechnicianByIdDB, getTechnicianReviewsDB, searchTechnicians, submitVerificationDB, updateAvailabilityDB, upsertProfileDB } from './technician.service.js';
 import type { AuthenticatedRequest } from '../../middlewares/authenticate.js';
 import multer from 'multer';
 import { AppError } from '../../errors/AppError.js';
+import { OnboardingKey } from '../../../constants/index.js';
 
 
 export const getTechnicians = catchAsync(async (req: Request, res) => {
@@ -74,6 +75,74 @@ export const upsertProfile = catchAsync(async (req: Request, res) => {
   if (!user) throw new AppError('UNAUTHENTICATED');
 
   const result = await upsertProfileDB(user.id, req.body, req.file);
+
+  sendResponse(res, { data: result });
+});
+
+
+export const getMyProfile = catchAsync(async (req: Request, res) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const result = await getMyProfileDB(user.id);
+
+  sendResponse(res, { data: result });
+});
+
+export const updateAvailability = catchAsync(async (req: Request, res) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const { isAvailableNow } = req.body as { isAvailableNow: boolean };
+  const result = await updateAvailabilityDB(user.id, isAvailableNow);
+
+  sendResponse(res, { data: result });
+});
+
+
+
+// export const signUpload = catchAsync(async (req: Request, res) => {
+//   const { user } = req as AuthenticatedRequest;
+//   if (!user) throw new AppError('UNAUTHENTICATED');
+
+//   const { purpose } = req.body as { purpose: 'PHOTO' | 'NID' };
+//   const result = signUploadDB(user.id, purpose);
+
+//   sendResponse(res, { data: result });
+// });
+
+
+
+export const submitVerification = catchAsync(async (req: Request, res) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const files = (req.files ?? {}) as {
+    photo?: Express.Multer.File[];
+    nid?: Express.Multer.File[];
+  };
+
+  const result = await submitVerificationDB(user.id, {
+    photo: files.photo?.[0],
+    nid: files.nid?.[0],
+  });
+
+  sendResponse(res, { data: result });
+});
+
+
+
+export const extractOnboardingAnswer = catchAsync(async (req: Request, res) => {
+  const { questionKey, text } = req.body as { questionKey: OnboardingKey; text?: string };
+  const audio = req.file;
+
+  if ((text && audio) || (!text && !audio)) {
+    throw new AppError('VALIDATION_ERROR', 'Send exactly one of text or audio');
+  }
+
+  const result = audio
+    ? await extractAnswerFromAudio(questionKey, audio)
+    : extractAnswer(questionKey, text ?? '');
 
   sendResponse(res, { data: result });
 });

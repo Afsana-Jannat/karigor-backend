@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AREA_SLUGS, SKILL_SLUGS } from '../../../constants/index.js';
+import { AREA_SLUGS, ONBOARDING_KEYS, SKILL_SLUGS } from '../../../constants/index.js';
 
 export const searchTechniciansQuery = z.object({
   skill: z
@@ -40,6 +40,11 @@ export const reviewsQuery = z.object({
 const uniqueList = (label: string) => ({
   message: `${label} must not contain duplicates`,
 });
+
+const optionalRate = z.preprocess(
+  (v) => (v === '' ? undefined : v),
+  z.coerce.number().int().min(0).max(1000000).optional(),
+);
 export const upsertProfileBody = z
   .object({
     name: z.string().trim().min(2).max(50).optional(),
@@ -66,10 +71,23 @@ export const upsertProfileBody = z
         message: 'One or more area slugs are invalid',
       })
       .refine((v) => new Set(v).size === v.length, uniqueList('areas')),
-    rateMin: z.coerce.number().int().min(0).max(1000000).optional(),
-    rateMax: z.coerce.number().int().min(0).max(1000000).optional(),
+   rateMin: optionalRate,
+   rateMax: optionalRate,
   })
   .refine(
     (d) => d.rateMin === undefined || d.rateMax === undefined || d.rateMin <= d.rateMax,
     { message: 'rateMin must not be greater than rateMax' },
   );
+
+
+export const availabilityBody = z.object({
+  isAvailableNow: z.enum(['true', 'false']).transform((v) => v === 'true'),
+});
+
+
+
+
+export const extractAnswerBody = z.object({
+  questionKey: z.enum(ONBOARDING_KEYS),
+  text: z.string().trim().min(1).max(300).optional(),
+});
