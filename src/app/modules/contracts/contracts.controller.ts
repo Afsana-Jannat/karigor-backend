@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { getJobContract, requestContractSignOtp, selectBidAndCreateContract, signContract } from './contracts.service.js';
+import { getJobContract, requestContractSignOtp, selectBidAndCreateContract, signContract, verifyContract } from './contracts.service.js';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -112,6 +112,31 @@ export const signContractController = catchAsync(
     const { otp } = req.body;
 
     const data = await signContract(id as string, user.id, otp);
+
+    sendResponse(res, {
+      statusCode: 200,
+      data,
+    });
+  },
+);
+
+
+export const verifyContractController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+
+    if (!user) {
+      throw new AppError('UNAUTHENTICATED', 'Please log in first');
+    }
+
+    const { id } = req.params as { id: string };
+
+    const data = await verifyContract(
+      id,
+      user.id,
+      user.role,
+    );
 
     sendResponse(res, {
       statusCode: 200,

@@ -6,26 +6,9 @@ import { AREAS, SKILLS } from '../../../constants';
 import { AppError } from '../../errors/AppError.js';
 import { issueContractOtp, verifyContractOtp } from './contracts.otp.js';
 import { redis } from '../../../lib/redis.js';
+import { hashContract } from './contracts.hash.js';
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
 
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-
-  return `{${keys
-    .map(
-      (key) =>
-        `${JSON.stringify(key)}:${stableStringify(record[key])}`,
-    )
-    .join(',')}}`;
-}
 
 function getBanglaName(
   options: readonly {
@@ -198,9 +181,7 @@ export async function selectBidAndCreateContract(
       createdAt: now.toISOString(),
     };
 
-    const contentHash = createHash('sha256')
-      .update(stableStringify(content), 'utf8')
-      .digest('hex');
+const contentHash = hashContract(content);
 
     const contract = await tx.contract.create({
       data: {
@@ -292,6 +273,7 @@ export const getJobContract = async (
 
   return job.contract;
 };
+
 
 export const requestContractSignOtp = async (
   contractId: string,
@@ -546,4 +528,45 @@ export async function signContract(
   await redis.del(otpKey);
 
   return result;
+}
+
+
+
+export async function verifyContract(
+  contractId: string,
+  userId: string,
+  userRole: 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN',
+) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      content: true,
+      contentHash: true,
+      job: {
+        select: {
+          customerId: true,
+          technicianId: true,
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  const isParty =
+    contract.job.customerId === userId ||
+    contract.job.technicianId === userId;
+
+  if (userRole !== 'ADMIN' && !isParty) {
+    throw new AppError('NOT_FOUND', 'Contract not found');
+  }
+
+  const hash = hashContract(contract.content);
+
+  return {
+    valid: hash === contract.contentHash,
+    hash,
+  };
 }
