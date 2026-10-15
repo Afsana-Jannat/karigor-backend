@@ -44,3 +44,27 @@ export async function uploadImageWithId(
     stream.end(fileBuffer);
   });
 }
+
+export const ALLOWED_FORMATS = 'jpeg,jpg,png,webp';
+
+export function signUploadParams(params: Record<string, string | number>, apiSecret: string) {
+  return cloudinary.utils.api_sign_request(params, apiSecret);
+}
+
+
+
+export async function uploadPrivateImage(
+  fileBuffer: Buffer,
+  folder: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: 'image', type: 'authenticated' },
+      (error, result) => {
+        if (error || !result) return reject(error ?? new Error('Upload failed'));
+        resolve(result.public_id);
+      },
+    );
+    stream.end(fileBuffer);
+  });
+}

@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { validateRequest } from '../../middlewares/validateRequest.js';
-import { getTechnicianById, getTechnicianReviews, getTechnicians, upsertProfile } from './technician.controller.js';
-import { reviewsQuery, searchTechniciansQuery, technicianIdParams, upsertProfileBody } from './technician.validation.js';
+import { extractOnboardingAnswer, getMyProfile, getTechnicianById, getTechnicianReviews, getTechnicians, submitVerification, updateAvailability, upsertProfile } from './technician.controller.js';
+import { availabilityBody, extractAnswerBody, reviewsQuery, searchTechniciansQuery, technicianIdParams, upsertProfileBody } from './technician.validation.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize } from '../../middlewares/authorize.js';
-import { uploadPhoto } from '../../middlewares/upload.js';
+import { uploadAudio, uploadPhoto, uploadVerificationFiles } from '../../middlewares/upload.js';
 // add uploadPhoto to the controller imports
 
 const router = Router();
@@ -38,5 +38,44 @@ router.put(
   validateRequest({ body: upsertProfileBody }),
   upsertProfile,
 );
+
+
+router.get('/me/profile', authenticate, authorize('TECHNICIAN'), getMyProfile);
+
+router.patch(
+  '/me/availability',
+  authenticate,
+  authorize('TECHNICIAN'),
+  validateRequest({ body: availabilityBody }),
+  updateAvailability,
+);
+
+
+
+router.post(
+  '/me/verification',
+  authenticate,
+  authorize('TECHNICIAN'),
+  uploadVerificationFiles,
+  submitVerification,
+);
+
+
+
+
+// FOR GEMINI
+router.post(
+  '/onboarding/extract',
+  authenticate,
+  authorize('TECHNICIAN'),
+  uploadAudio,
+  validateRequest({ body: extractAnswerBody }),
+  extractOnboardingAnswer,
+);
+
+
+
+
+
 
 export const technicianRoutes = router;
