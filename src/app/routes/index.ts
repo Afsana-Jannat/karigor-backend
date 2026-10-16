@@ -6,6 +6,7 @@ import { technicianRoutes } from "../modules/technician/technician.route.js";
 import { jobsRoutes } from "../modules/jobs/jobs.route.js";
 import { bidsRoutes } from "../modules/bids/bids.route.js";
 import { reviewRoutes } from "../modules/review/review.route.js";
+import { reportRoutes } from "../modules/reports/report.route.js";
 
 const router = Router();
 
@@ -18,6 +19,8 @@ const moduleRoutes = [
   { path: "/jobs", route: jobsRoutes },
   { path: "/bids", route: bidsRoutes },
   { path: "/jobs", route: reviewRoutes },
+  { path: "/jobs", route: reportRoutes },
+  { path: "/reports", route: reportRoutes },
 ];
 
 for (const { path, route } of moduleRoutes) {
