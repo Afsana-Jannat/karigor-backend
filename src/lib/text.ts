@@ -102,3 +102,21 @@ export function matchSlugs(text: string, list: readonly Option[]) {
 
   return { slugs: [...slugs], unmatched };
 }
+
+// Returns the single best slug: the one whose longest name appears in the text.
+export function findBestSlug(text: string, list: readonly Option[]): string | null {
+  const term = normalizeText(text);
+  if (!term) return null;
+
+  let best: { slug: string; length: number } | null = null;
+  for (const item of list) {
+    for (const raw of [item.en, item.bn, ...item.aliases]) {
+      const name = normalizeText(raw);
+      if (name.length < 3) continue;
+      if (term.includes(name) && (!best || name.length > best.length)) {
+        best = { slug: item.slug, length: name.length };
+      }
+    }
+  }
+  return best?.slug ?? null;
+}

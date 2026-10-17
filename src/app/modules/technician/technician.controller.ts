@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { buildMeta, sendResponse } from '../../utils/sendResponse.js';
 import { catchAsync } from '../../utils/catchAsync.js';
-import { extractAnswer, extractAnswerFromAudio, getMyProfileDB, getTechnicianByIdDB, getTechnicianReviewsDB, searchTechnicians, submitVerificationDB, updateAvailabilityDB, upsertProfileDB } from './technician.service.js';
+import { extractAnswer, extractAnswerFromAudio, getDashboardDB, getMyProfileDB, getTechnicianByIdDB, getTechnicianReviewsDB, searchTechnicians, submitVerificationDB, updateAvailabilityDB, upsertProfileDB } from './technician.service.js';
 import type { AuthenticatedRequest } from '../../middlewares/authenticate.js';
 import multer from 'multer';
 import { AppError } from '../../errors/AppError.js';
@@ -143,6 +143,15 @@ export const extractOnboardingAnswer = catchAsync(async (req: Request, res) => {
   const result = audio
     ? await extractAnswerFromAudio(questionKey, audio)
     : extractAnswer(questionKey, text ?? '');
+
+  sendResponse(res, { data: result });
+});
+
+export const getMyDashboard = catchAsync(async (req: Request, res) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const result = await getDashboardDB(user.id);
 
   sendResponse(res, { data: result });
 });

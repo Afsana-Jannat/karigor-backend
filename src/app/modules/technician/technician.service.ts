@@ -653,3 +653,109 @@ export const extractAnswerFromAudio = async (
 
 
 //  END GEMINI
+
+
+const DASHBOARD_JOB_STATUSES = [
+  'IN_PROGRESS',
+  'AWAITING_CONFIRMATION',
+  'COMPLETED',
+  'DISPUTED',
+] as const;
+
+export const getDashboardDB = async (userId: string) => {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const contractExpiry = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+  const profile = await prisma.technicianProfile.findUnique({
+    where: { userId },
+    select: {
+      skills: true,
+      areas: true,
+      verifyStatus: true,
+      isAvailableNow: true,
+      ratingAvg: true,
+      ratingCount: true,
+    },
+  });
+
+  if (!profile) {
+    throw new AppError('NOT_FOUND', 'Technician profile not found');
+  }
+
+  const [statusGroups, awaitingSignature, activeBids, newJobs, earningsAll, earningsRecent, reviews] =
+    await Promise.all([
+      prisma.job.groupBy({
+        by: ['status'],
+        where: { technicianId: userId, status: { in: [...DASHBOARD_JOB_STATUSES] } },
+        _count: { _all: true },
+      }),
+      prisma.job.count({
+        where: { technicianId: userId, status: 'CONTRACT_PENDING', updatedAt: { gt: contractExpiry } },
+      }),
+      prisma.bid.count({
+        where: {
+          technicianId: userId,
+          status: 'ACTIVE',
+          job: { status: 'OPEN', expiresAt: { gt: now } },
+        },
+      }),
+      prisma.job.count({
+        where: {
+          status: 'OPEN',
+          expiresAt: { gt: now },
+          skill: { in: profile.skills },
+          area: { in: profile.areas },
+          bids: { none: { technicianId: userId } },
+        },
+      }),
+      prisma.job.aggregate({
+        where: { technicianId: userId, paidAt: { not: null } },
+        _sum: { agreedPrice: true },
+      }),
+      prisma.job.aggregate({
+        where: { technicianId: userId, paidAt: { gte: thirtyDaysAgo } },
+        _sum: { agreedPrice: true },
+      }),
+      prisma.review.findMany({
+        where: { technicianId: userId },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          customer: { select: { name: true } },
+        },
+      }),
+    ]);
+
+  const byStatus = new Map(statusGroups.map((g) => [g.status, g._count._all]));
+  const countOf = (status: (typeof DASHBOARD_JOB_STATUSES)[number]) => byStatus.get(status) ?? 0;
+
+  return {
+    counts: {
+      newJobs,
+      activeBids,
+      awaitingSignature,
+      active: countOf('IN_PROGRESS') + countOf('AWAITING_CONFIRMATION'),
+      completed: countOf('COMPLETED'),
+      disputed: countOf('DISPUTED'),
+    },
+    earnings: {
+      total: earningsAll._sum.agreedPrice ?? 0,
+      last30Days: earningsRecent._sum.agreedPrice ?? 0,
+    },
+    rating: { avg: profile.ratingAvg, count: profile.ratingCount },
+    verifyStatus: profile.verifyStatus,
+    isAvailableNow: profile.isAvailableNow,
+    recentReviews: reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      customerName: r.customer.name.trim().split(/\s+/)[0],
+      createdAt: r.createdAt,
+    })),
+  };
+};
