@@ -9,7 +9,19 @@ export async function createOrUpdateBid(
   input: CreateBidInput,
 ) {
   return prisma.$transaction(async (tx) => {
-    // Check technician profile
+    // Lock this job so bid submissions for it are serialized.
+    const lockedJobs = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "Job"
+      WHERE "id" = ${jobId}
+      FOR UPDATE
+    `;
+
+    if (lockedJobs.length === 0) {
+      throw new AppError('NOT_FOUND', 'Job not found');
+    }
+
+    // Check technician profile.
     const profile = await tx.technicianProfile.findUnique({
       where: { userId: technicianId },
       select: {
@@ -25,7 +37,7 @@ export async function createOrUpdateBid(
       );
     }
 
-    // Find the job
+    // Load the job after acquiring the lock.
     const job = await tx.job.findUnique({
       where: { id: jobId },
       select: {
@@ -56,7 +68,6 @@ export async function createOrUpdateBid(
       );
     }
 
-    // Check skill and area matching
     if (
       !profile.skills.includes(job.skill) ||
       !profile.areas.includes(job.area)
@@ -67,7 +78,7 @@ export async function createOrUpdateBid(
       );
     }
 
-    // Check whether this technician has already bid
+    // Find an existing bid by this technician.
     const existingBid = await tx.bid.findUnique({
       where: {
         jobId_technicianId: {
@@ -95,7 +106,7 @@ export async function createOrUpdateBid(
     const isNewActiveBid =
       !existingBid || existingBid.status === 'WITHDRAWN';
 
-    // Enforce the maximum of 20 active bids
+    // Only new or reactivated bids consume an additional active slot.
     if (isNewActiveBid) {
       const activeBidCount = await tx.bid.count({
         where: {
@@ -112,7 +123,7 @@ export async function createOrUpdateBid(
       }
     }
 
-    // Create a new bid or update the existing bid
+    // Create a bid or update/reactivate the existing one.
     const bid = await tx.bid.upsert({
       where: {
         jobId_technicianId: {
@@ -129,7 +140,9 @@ export async function createOrUpdateBid(
       },
       update: {
         price: input.price,
-        note: input.note,
+        ...(input.note !== undefined
+          ? { note: input.note }
+          : {}),
         status: 'ACTIVE',
       },
       select: {
@@ -144,7 +157,7 @@ export async function createOrUpdateBid(
       },
     });
 
-    // Notify the customer only for a new or reactivated bid
+    // Notify the customer only for a new or reactivated bid.
     if (isNewActiveBid) {
       await tx.notification.create({
         data: {
