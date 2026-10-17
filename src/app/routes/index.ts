@@ -2,6 +2,8 @@ import { Router } from "express";
 import { healthRoutes } from "../modules/health/health.route.js";
 import { metaRoutes } from "../modules/meta/meta.route.js";
 import { authRoutes } from "../modules/auth/auth.route.js";
+import { contractsRoutes } from "../modules/contracts/contracts.route.js";
+import { paymentsRoutes } from "../modules/payment/payment.route.js";
 import { technicianRoutes } from "../modules/technician/technician.route.js";
 import { jobsRoutes } from "../modules/jobs/jobs.route.js";
 import { bidsRoutes } from "../modules/bids/bids.route.js";
@@ -18,9 +20,12 @@ const moduleRoutes = [
   { path: "/auth", route: authRoutes },
   { path: "/technicians", route: technicianRoutes },
   { path: "/jobs", route: jobsRoutes },
-  { path: "/bids", route: bidsRoutes },
+  { path: "/jobs", route: contractsRoutes },
   { path: "/jobs", route: reviewRoutes },
   { path: "/jobs", route: reportRoutes },
+  { path: "/bids", route: bidsRoutes },
+  { path: "/contracts", route: contractsRoutes },
+  { path: "/payments", route: paymentsRoutes },
   { path: "/reports", route: reportRoutes },
   { path: "/admin", route: adminRoutes },
 ];
