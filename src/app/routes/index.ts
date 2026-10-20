@@ -12,6 +12,7 @@ import { reportRoutes } from "../modules/reports/report.route.js";
 import { searchRoutes } from "../modules/search/search.route.js";
 import { adminRoutes } from "../modules/admin/admin.route.js";
 import { notificationsRoutes } from "../modules/notifications/notifications.route.js";
+import { userRoutes } from "../modules/users/user.route.js";
 
 const router = Router();
 
@@ -32,7 +33,8 @@ const moduleRoutes = [
   { path: "/search", route: searchRoutes },
   { path: "/admin", route: adminRoutes },
   { path: "/notifications", route: notificationsRoutes },
-  {path:"/jobs", route:jobBidsRoutes}
+  {path:"/jobs", route:jobBidsRoutes},
+  {path:"/users", route:userRoutes},
 ];
 
 for (const { path, route } of moduleRoutes) {
