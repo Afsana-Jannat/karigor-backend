@@ -171,3 +171,165 @@ export async function createOrUpdateBid(
     return bid;
   });
 }
+
+
+type BidSort = 'price' | 'rating' | 'experience';
+
+export const getJobBidsDB = async (customerId: string, jobId: string, sort: BidSort) => {
+  // Only the customer who owns the job. Anyone else gets NOT_FOUND.
+  const job = await prisma.job.findFirst({
+    where: { id: jobId, customerId },
+    select: { id: true, status: true, expiresAt: true },
+  });
+
+  if (!job) {
+    throw new AppError('NOT_FOUND', 'Job not found');
+  }
+
+  const rows = await prisma.bid.findMany({
+    where: {
+      jobId,
+      status: { in: ['ACTIVE', 'SELECTED'] },
+      technician: { is: { status: 'ACTIVE' } },
+    },
+    select: {
+      id: true,
+      price: true,
+      note: true,
+      status: true,
+      createdAt: true,
+      technician: {
+        select: {
+          id: true,
+          name: true,
+          technicianProfile: {
+            select: {
+              photoUrl: true,
+              verifyStatus: true,
+              isAvailableNow: true,
+              experienceYears: true,
+              ratingAvg: true,
+              ratingCount: true,
+              completedJobs: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const bids = rows.map((b) => {
+    const p = b.technician.technicianProfile;
+    return {
+      bidId: b.id,
+      price: b.price,
+      note: b.note,
+      status: b.status,
+      createdAt: b.createdAt,
+      technician: {
+        id: b.technician.id,
+        name: b.technician.name,
+        photoUrl: p?.photoUrl ?? null,
+        verified: p?.verifyStatus === 'VERIFIED',
+        isAvailableNow: p?.isAvailableNow ?? false,
+        experienceYears: p?.experienceYears ?? 0,
+        ratingAvg: p?.ratingAvg ?? 0,
+        ratingCount: p?.ratingCount ?? 0,
+        completedJobs: p?.completedJobs ?? 0,
+      },
+    };
+  });
+
+  bids.sort((a, b) => {
+    if (sort === 'rating') {
+      return (
+        b.technician.ratingAvg - a.technician.ratingAvg ||
+        b.technician.ratingCount - a.technician.ratingCount ||
+        a.price - b.price
+      );
+    }
+    if (sort === 'experience') {
+      return b.technician.experienceYears - a.technician.experienceYears || a.price - b.price;
+    }
+    return a.price - b.price || b.technician.ratingAvg - a.technician.ratingAvg;
+  });
+
+  return {
+    job: { id: job.id, status: job.status, expiresAt: job.expiresAt, bidCount: bids.length },
+    bids,
+  };
+};
+
+export const withdrawBidDB = async (technicianId: string, jobId: string) => {
+  const bid = await prisma.bid.findUnique({
+    where: { jobId_technicianId: { jobId, technicianId } },
+    select: { id: true },
+  });
+
+  if (!bid) {
+    throw new AppError('NOT_FOUND', 'Bid not found');
+  }
+
+  // Conditional update: only an ACTIVE bid can be withdrawn.
+  const result = await prisma.bid.updateMany({
+    where: { id: bid.id, status: 'ACTIVE' },
+    data: { status: 'WITHDRAWN' },
+  });
+
+  if (result.count === 0) {
+    throw new AppError('INVALID_STATUS', 'This bid can no longer be withdrawn');
+  }
+
+  return { jobId, status: 'WITHDRAWN' as const };
+};
+
+export const getMyBidsDB = async (
+  technicianId: string,
+  query: {
+    status?: 'ACTIVE' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
+    page: number;
+    pageSize: number;
+  },
+) => {
+  const { status, page, pageSize } = query;
+  const where = { technicianId, ...(status ? { status } : {}) };
+
+  const [rows, total] = await Promise.all([
+    prisma.bid.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        price: true,
+        note: true,
+        status: true,
+        updatedAt: true,
+        job: {
+          select: {
+            id: true,
+            skill: true,
+            area: true,
+            status: true,
+            preferredDate: true,
+            expiresAt: true,
+          },
+        },
+      },
+    }),
+    prisma.bid.count({ where }),
+  ]);
+
+  return {
+    items: rows.map((b) => ({
+      bidId: b.id,
+      price: b.price,
+      note: b.note,
+      status: b.status,
+      updatedAt: b.updatedAt,
+      job: b.job,
+    })),
+    total,
+  };
+};
