@@ -6,11 +6,12 @@ import { contractsRoutes } from "../modules/contracts/contracts.route.js";
 import { paymentsRoutes } from "../modules/payment/payment.route.js";
 import { technicianRoutes } from "../modules/technician/technician.route.js";
 import { jobsRoutes } from "../modules/jobs/jobs.route.js";
-import { bidsRoutes } from "../modules/bids/bids.route.js";
+import { bidsRoutes, jobBidsRoutes } from "../modules/bids/bids.route.js";
 import { reviewRoutes } from "../modules/review/review.route.js";
 import { reportRoutes } from "../modules/reports/report.route.js";
 import { searchRoutes } from "../modules/search/search.route.js";
 import { adminRoutes } from "../modules/admin/admin.route.js";
+import { notificationsRoutes } from "../modules/notifications/notifications.route.js";
 
 const router = Router();
 
@@ -30,6 +31,8 @@ const moduleRoutes = [
   { path: "/reports", route: reportRoutes },
   { path: "/search", route: searchRoutes },
   { path: "/admin", route: adminRoutes },
+  { path: "/notifications", route: notificationsRoutes },
+  {path:"/jobs", route:jobBidsRoutes}
 ];
 
 for (const { path, route } of moduleRoutes) {

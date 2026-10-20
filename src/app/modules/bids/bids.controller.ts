@@ -2,8 +2,8 @@
 import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
-import { sendResponse } from '../../utils/sendResponse.js';
-import { createOrUpdateBid } from './bids.service.js';
+import { buildMeta, sendResponse } from '../../utils/sendResponse.js';
+import { createOrUpdateBid, getJobBidsDB, getMyBidsDB, withdrawBidDB } from './bids.service.js';
 import type { CreateBidInput } from './bids.validation.js';
 
 interface AuthenticatedRequest extends Request {
@@ -44,3 +44,40 @@ export const createOrUpdateBidController = catchAsync(
     });
   },
 );
+
+export const getJobBids = catchAsync(async (req: Request, res) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const { id } = req.params as { id: string };
+  const { sort } = req.query as unknown as { sort: 'price' | 'rating' | 'experience' };
+
+  sendResponse(res, { data: await getJobBidsDB(user.id, id, sort) });
+});
+
+export const withdrawBid = catchAsync(async (req: Request, res: Response) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const { id } = req.params as { id: string };
+
+  sendResponse(res, { data: await withdrawBidDB(user.id, id) });
+});
+
+export const getMyBids = catchAsync(async (req: Request, res: Response) => {
+  const { user } = req as AuthenticatedRequest;
+  if (!user) throw new AppError('UNAUTHENTICATED');
+
+  const query = req.query as unknown as {
+    status?: 'ACTIVE' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
+    page: number;
+    pageSize: number;
+  };
+
+  const { items, total } = await getMyBidsDB(user.id, query);
+
+  sendResponse(res, {
+    data: items,
+    meta: buildMeta(query.page, query.pageSize, total),
+  });
+});
