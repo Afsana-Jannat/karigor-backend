@@ -585,3 +585,18 @@ export async function getCurrentUser(userId: string) {
 
 	return user;
 }
+
+export async function logoutAllUser(userId: string) {
+  const result = await prisma.user.updateMany({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
+
+  if (result.count === 0) {
+    throw new AppError("NOT_FOUND", "User account not found.");
+  }
+
+  return {
+    loggedOutEverywhere: true,
+  };
+}

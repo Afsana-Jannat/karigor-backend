@@ -5,6 +5,7 @@ import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
 import {
   getCurrentUser,
+  logoutAllUser,
   logoutUser,
   refreshSession,
   registerUser,
@@ -149,6 +150,29 @@ export const logoutController = catchAsync(
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/api/v1/auth',
+    });
+
+    sendResponse(res, {
+      data: result,
+    });
+  }
+);
+
+export const logoutAllController = catchAsync(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("UNAUTHENTICATED");
+    }
+
+    const result = await logoutAllUser(userId);
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/api/v1/auth",
     });
 
     sendResponse(res, {
