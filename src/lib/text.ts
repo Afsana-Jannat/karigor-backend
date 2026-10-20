@@ -17,9 +17,9 @@ export function normalizeText(input: string): string {
     .trim();
 }
 
-function extractNumbers(text: string): number[] {
-  return (normalizeText(text).match(/\d+/g) ?? []).map(Number);
-}
+// function extractNumbers(text: string): number[] {
+//   return (normalizeText(text).match(/\d+/g) ?? []).map(Number);
+// }
 
 export function parseAge(text: string): number | null {
   const n = extractNumbers(text)[0];
@@ -119,4 +119,11 @@ export function findBestSlug(text: string, list: readonly Option[]): string | nu
     }
   }
   return best?.slug ?? null;
+}
+
+function extractNumbers(text: string): number[] {
+  const asciiDigits = text.replace(/[০-৯]/g, (d) => String(BANGLA_DIGITS.indexOf(d)));
+  // "1,500" and "১,৫০০" are one number: drop thousands separators.
+  const joined = asciiDigits.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+  return (normalizeText(joined).match(/\d+/g) ?? []).map(Number);
 }
