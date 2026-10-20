@@ -17,12 +17,11 @@ export async function updateCurrentUser(userId: string, name: string) {
 }
 
 export async function deleteCurrentUser(userId: string, userRole: string) {
-  // ADMIN can't delete their account via /users/me
   if (userRole === "ADMIN") {
     throw new AppError("FORBIDDEN", "Admins cannot delete their accounts here.");
   }
 
-  // Check if user has any active jobs in progress or disputed states as customer or technician
+  
   const activeJobsCount = await prisma.job.count({
     where: {
       OR: [
@@ -42,9 +41,8 @@ export async function deleteCurrentUser(userId: string, userRole: string) {
     );
   }
 
-  // Execute in a single transaction
   return await prisma.$transaction(async (tx) => {
-    // 1. Set status to DELETED and increment tokenVersion to invalidate all tokens
+    
     await tx.user.update({
       where: { id: userId },
       data: {
@@ -53,7 +51,7 @@ export async function deleteCurrentUser(userId: string, userRole: string) {
       },
     });
 
-    // 2. If the user is a technician, set isAvailableNow to false and withdraw active bids
+    
     if (userRole === "TECHNICIAN") {
       await tx.technicianProfile.updateMany({
         where: { userId },

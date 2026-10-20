@@ -33,7 +33,7 @@ export const deleteCurrentUserController = catchAsync(
 
     await deleteCurrentUser(userId, userRole);
 
-    // Clear the refresh-token cookie
+  
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

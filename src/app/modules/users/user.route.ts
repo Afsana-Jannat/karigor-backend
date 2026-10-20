@@ -9,7 +9,7 @@ import { deleteUserSchema, updateUserSchema } from "./user.validation.js";
 
 const router = Router();
 
-// Update current user's profile (Name only)
+
 router.patch(
   "/me",
   authenticate,
@@ -17,7 +17,7 @@ router.patch(
   updateCurrentUserController
 );
 
-// Delete current user's account
+
 router.delete(
   "/me",
   authenticate,
