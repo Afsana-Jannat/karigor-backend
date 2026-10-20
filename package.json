@@ -7,11 +7,11 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsup src/server.ts --format esm --target es2022 --out-dir dist --clean",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "format:check": "npx @biomejs/biome format ./src",
     "format:fix": "npx @biomejs/biome format --write ./src",
     "lint:check": "npx @biomejs/biome lint ./src",
-    "lint:fix": "npx @biomejs/biome lint --write ./src"
+    "lint:fix": "npx @biomejs/biome lint --write ./src",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "keywords": [],
   "author": "",
