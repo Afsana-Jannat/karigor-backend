@@ -3,7 +3,6 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
   checkAuthController,
-  logoutAllController,
   logoutController,
   refreshTokenController,
   registerController,
@@ -54,6 +53,4 @@ router.post('/refresh', refreshTokenController);
 // Logout requires a valid access token.
 router.post('/logout', authenticate, logoutController);
 
-// Logout from all devices
-router.post('/logout-all', authenticate, logoutAllController);
 export const authRoutes = router;
