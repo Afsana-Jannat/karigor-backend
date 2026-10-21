@@ -2,6 +2,7 @@
 import { Prisma } from '../../../generated/prisma/client.js';
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../errors/AppError.js';
+import { normalizeAreaSlug, normalizeSkillSlug } from '../../utils/normalizeSlug.js';
 import type { CreateJobInput, ListJobsQuery } from './jobs.validation.js';
 
 const MAX_OPEN_JOBS = 10;
@@ -68,12 +69,20 @@ console.log(customer)
             'You can have at most 10 open jobs at a time',
           );
         }
+const skill = normalizeSkillSlug(input.skill);
+const area = normalizeAreaSlug(input.area);
+if (!skill) {
+  throw new AppError('VALIDATION_ERROR', 'Invalid skill');
+}
 
+if (!area) {
+  throw new AppError('VALIDATION_ERROR', 'Invalid area');
+}
         const job = await tx.job.create({
           data: {
             customerId,
-            skill: input.skill,
-            area: input.area,
+            skill: skill,
+            area: area,
             description: input.description,
             preferredDate: input.preferredDate,
             isEmergency: input.isEmergency,

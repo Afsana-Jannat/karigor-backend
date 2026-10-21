@@ -17,9 +17,9 @@ export function normalizeText(input: string): string {
     .trim();
 }
 
-function extractNumbers(text: string): number[] {
-  return (normalizeText(text).match(/\d+/g) ?? []).map(Number);
-}
+// function extractNumbers(text: string): number[] {
+//   return (normalizeText(text).match(/\d+/g) ?? []).map(Number);
+// }
 
 export function parseAge(text: string): number | null {
   const n = extractNumbers(text)[0];
@@ -101,4 +101,29 @@ export function matchSlugs(text: string, list: readonly Option[]) {
   }
 
   return { slugs: [...slugs], unmatched };
+}
+
+// Returns the single best slug: the one whose longest name appears in the text.
+export function findBestSlug(text: string, list: readonly Option[]): string | null {
+  const term = normalizeText(text);
+  if (!term) return null;
+
+  let best: { slug: string; length: number } | null = null;
+  for (const item of list) {
+    for (const raw of [item.en, item.bn, ...item.aliases]) {
+      const name = normalizeText(raw);
+      if (name.length < 3) continue;
+      if (term.includes(name) && (!best || name.length > best.length)) {
+        best = { slug: item.slug, length: name.length };
+      }
+    }
+  }
+  return best?.slug ?? null;
+}
+
+function extractNumbers(text: string): number[] {
+  const asciiDigits = text.replace(/[০-৯]/g, (d) => String(BANGLA_DIGITS.indexOf(d)));
+  // "1,500" and "১,৫০০" are one number: drop thousands separators.
+  const joined = asciiDigits.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+  return (normalizeText(joined).match(/\d+/g) ?? []).map(Number);
 }

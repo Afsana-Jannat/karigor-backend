@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateRequest } from '../../middlewares/validateRequest.js';
-import { extractOnboardingAnswer, getMyProfile, getTechnicianById, getTechnicianReviews, getTechnicians, submitVerification, updateAvailability, upsertProfile } from './technician.controller.js';
+import { extractOnboardingAnswer, getMyDashboard, getMyProfile, getTechnicianById, getTechnicianReviews, getTechnicians, submitVerification, updateAvailability, upsertProfile } from './technician.controller.js';
 import { availabilityBody, extractAnswerBody, reviewsQuery, searchTechniciansQuery, technicianIdParams, upsertProfileBody } from './technician.validation.js';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize } from '../../middlewares/authorize.js';
@@ -76,6 +76,6 @@ router.post(
 
 
 
-
+router.get('/me/dashboard', authenticate, authorize('TECHNICIAN'), getMyDashboard);
 
 export const technicianRoutes = router;

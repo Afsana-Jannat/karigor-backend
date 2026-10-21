@@ -40,6 +40,7 @@ export const authenticate = catchAsync(
 		});
 
 		if (
+			// !user
 			!user?.isVerified ||
 			user.status !== "ACTIVE" ||
 			user.tokenVersion !== payload.tokenVersion ||

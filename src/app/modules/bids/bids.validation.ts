@@ -11,3 +11,18 @@ export const bidParamsSchema = z.object({
 });
 
 export type CreateBidInput = z.infer<typeof createBidSchema>;
+
+
+export const jobIdParams = z.object({
+  id: z.string().trim().min(1),
+});
+
+export const jobBidsQuery = z.object({
+  sort: z.enum(['price', 'rating', 'experience']).default('price'),
+});
+
+export const myBidsQuery = z.object({
+  status: z.enum(['ACTIVE', 'SELECTED', 'REJECTED', 'WITHDRAWN']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(20).default(20),
+});

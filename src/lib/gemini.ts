@@ -71,3 +71,37 @@ export async function askGeminiWithAudio(input: {
   }
   return null;
 }
+
+
+
+// Text-only version. Returns the parsed JSON, or null on ANY failure. Never throws.
+export async function askGeminiText(prompt: string): Promise<unknown> {
+  const apiKey = env.GEMINI_API_KEY;
+  const model = env.GEMINI_MODEL;
+  if (!apiKey || !model) return null;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' },
+  };
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const text = await requestOnce(url, apiKey, body);
+    if (!text) continue;
+    try {
+      return JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+    } catch {
+      // invalid JSON, try once more
+    }
+  }
+  return null;
+}
+
+// Browser recordings are often labelled video/*. Tell Gemini it is audio.
+export const toAudioMime = (mime: string): string => {
+  const base = mime.split(';')[0] ?? mime;
+  if (base === 'video/mp4') return 'audio/mp4';
+  if (base === 'video/webm') return 'audio/webm';
+  return base;
+};
