@@ -66,14 +66,6 @@ export const verifyLoginOtpController = catchAsync(
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.cookie('accessToken', result.accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -102,14 +94,12 @@ export const refreshTokenController = catchAsync(
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      path: '/api/v1/auth',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -149,30 +139,11 @@ export const logoutController = catchAsync(
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/api/v1/auth',
     });
-
-    sendResponse(res, {
-      data: result,
-    });
-  }
-);
-
-export const logoutAllController = catchAsync(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new AppError("UNAUTHENTICATED");
-    }
-
-    const result = await logoutAllUser(userId);
-
-    res.clearCookie("refreshToken", {
+    res.clearCookie('accessToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/api/v1/auth",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     });
 
     sendResponse(res, {
