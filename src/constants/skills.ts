@@ -1,0 +1,198 @@
+// Source list agreed by the team. bn is the ONE name shown to users; the other
+// spoken names are aliases (used only for matching voice and typed text).
+// Slugs are saved in the database: never rename or reuse a slug once data exists.
+export const SKILLS = [
+	{
+		slug: "electrician",
+		en: "Electrician",
+		bn: "কারেন্টের মিস্তিরি",
+		aliases: [
+			"কারেন্টের মিস্ত্রি",
+			"কারেন্ট",
+			"ইলেকট্রিশিয়ান",
+			"ইলেক্ট্রিশিয়ান",
+			"ইলেক্ত্রিসিয়ান",
+			"ইলেকট্রিক মিস্ত্রি",
+			"বিদ্যুৎ মিস্ত্রি",
+			"wiring",
+			"ওয়্যারিং",
+		],
+	},
+	{
+		slug: "plumber",
+		en: "Plumber",
+		bn: "পাইপ মিস্ত্রি",
+		aliases: ["প্লাম্বার", "প্লামবার", "পাইপ", "ট্যাপ", "পানির লাইন"],
+	},
+	{
+		slug: "ac_repairer",
+		en: "AC Repairer",
+		bn: "এসি মিস্ত্রি",
+		aliases: [
+			"এসি মেকানিক",
+			"এসি ঠিক করা",
+			"এসি সার্ভিসিং",
+			"এয়ার কন্ডিশনার",
+			"ac servicing",
+		],
+	},
+	{
+		slug: "generator_operator",
+		en: "Generator Operator",
+		bn: "জেনারেটর অপারেটর",
+		aliases: ["জেনারেটর", "জেনারেটর চালক"],
+	},
+	{
+		slug: "welder",
+		en: "Welder",
+		bn: "ওয়েল্ডিং মিস্ত্রি",
+		aliases: ["ওয়েল্ডার", "ওয়েল্ডিং", "ঝালাই", "ঝালাইয়ের মিস্ত্রি"],
+	},
+	{
+		slug: "car_mechanic",
+		en: "Car Mechanic",
+		bn: "গাড়ির মিস্ত্রি",
+		aliases: ["গাড়ি মেকানিক", "গাড়ি ঠিক করা", "কার মেকানিক", "গ্যারেজ"],
+	},
+	{
+		slug: "mason",
+		en: "Mason",
+		bn: "রাজমিস্ত্রি",
+		aliases: ["ঢালাই মিস্ত্রি", "গাঁথুনি"],
+	},
+	{
+		slug: "carpenter",
+		en: "Carpenter",
+		bn: "কাঠমিস্ত্রি",
+		aliases: ["কাঠের মিস্ত্রি", "ফার্নিচার মিস্ত্রি", "কার্পেন্টার"],
+	},
+	{
+		slug: "painter",
+		en: "Painter",
+		bn: "রংমিস্ত্রি",
+		aliases: ["রং মিস্ত্রি", "পেইন্টার", "রং করা", "দেয়ালে রং"],
+	},
+	{
+		slug: "lift_operator",
+		en: "Lift Operator",
+		bn: "লিফট অপারেটর",
+		aliases: ["লিফটম্যান", "লিফট মিস্ত্রি", "লিফট"],
+	},
+	{
+		slug: "cctv_installer",
+		en: "CCTV Installer",
+		bn: "সিসিটিভি ক্যামেরার মিস্ত্রি",
+		aliases: ["সিসিটিভি", "সিসি ক্যামেরা", "সিসিটিভি ক্যামেরা লাগানো", "cctv"],
+	},
+	{
+		slug: "tiles_worker",
+		en: "Tiles Worker",
+		bn: "টাইলস মিস্ত্রি",
+		aliases: ["টাইলস", "টাইলস লাগানো", "টাইলস ফিটিং"],
+	},
+	{
+		slug: "water_pump_worker",
+		en: "Water Pump Worker",
+		bn: "পানির পাম্প মিস্ত্রি",
+		aliases: ["পাম্প মিস্ত্রি", "পানির পাম্প", "মোটর মিস্ত্রি"],
+	},
+	{
+		slug: "security_guard",
+		en: "Security Guard",
+		bn: "সিকিউরিটি গার্ড",
+		aliases: ["নিরাপত্তা প্রহরী", "নিরাপত্তাকর্মী", "দারোয়ান", "গার্ড"],
+	},
+	{
+		slug: "driver",
+		en: "Driver",
+		bn: "ড্রাইভার",
+		aliases: ["গাড়ি চালক", "গাড়ির ড্রাইভার", "চালক"],
+	},
+	{
+		slug: "auto_rickshaw_driver",
+		en: "Auto / Rickshaw Driver",
+		bn: "অটো / রিকশা চালক",
+		aliases: ["অটো চালক", "রিকশা চালক", "রিকশাওয়ালা", "অটোরিকশা চালক", "সিএনজি চালক"],
+	},
+	{
+		slug: "cleaner",
+		en: "Cleaner / Janitor",
+		bn: "ক্লিনার",
+		aliases: ["পরিচ্ছন্নতাকর্মী", "পরিষ্কার করা", "ঝাড়ুদার", "জ্যানিটর"],
+	},
+	{
+		slug: "house_maid",
+		en: "House Maid",
+		bn: "গৃহকর্মী",
+		aliases: ["কাজের বুয়া", "বুয়া", "কাজের লোক", "বাসার কাজ"],
+	},
+	{
+		slug: "construction_worker",
+		en: "Construction Worker",
+		bn: "জোগালি",
+		aliases: ["নির্মাণ শ্রমিক", "নির্মাণ কর্মী", "রাজমিস্ত্রির জোগালি"],
+	},
+	{
+		slug: "cycle_rickshaw_mechanic",
+		en: "Cycle / Rickshaw Mechanic",
+		bn: "সাইকেল / রিকশা মেকানিক",
+		aliases: ["সাইকেল মিস্ত্রি", "রিকশা মিস্ত্রি", "সাইকেল মেকানিক", "রিকশা মেকানিক"],
+	},
+	{
+		slug: "mobile_repairer",
+		en: "Mobile Repairer",
+		bn: "মোবাইল মেকানিক",
+		aliases: ["মোবাইল মিস্ত্রি", "মোবাইল ঠিক করা", "মোবাইল রিপেয়ার"],
+	},
+	{
+		slug: "dish_cable_worker",
+		en: "Dish / Cable Line Worker",
+		bn: "ডিশ লাইনের লোক",
+		aliases: ["ডিশ লাইন", "ক্যাবল লাইন", "ক্যাবল অপারেটর", "ডিশ মিস্ত্রি"],
+	},
+	{
+		slug: "internet_line_worker",
+		en: "Internet Line Worker",
+		bn: "ইন্টারনেট লাইনের লোক",
+		aliases: ["ইন্টারনেট লাইন", "ইন্টারনেট মিস্ত্রি", "ব্রডব্যান্ড লাইন", "ওয়াইফাই লাইন"],
+	},
+	{
+		slug: "kitchen_helper",
+		en: "Kitchen Helper",
+		bn: "বাবুর্চির সহকারী",
+		aliases: ["রান্নাঘরের হেল্পার", "কিচেন হেল্পার", "বাবুর্চির হেল্পার"],
+	},
+	{
+		slug: "laundry_worker",
+		en: "Laundry Worker",
+		bn: "ধোপা",
+		aliases: ["লন্ড্রি কর্মী", "লন্ড্রি", "কাপড় ধোয়া"],
+	},
+	{
+		slug: "barber",
+		en: "Barber",
+		bn: "নাপিত",
+		aliases: ["ক্ষৌরকার", "বারবার", "চুল কাটা"],
+	},
+	{
+		slug: "tailor",
+		en: "Tailor",
+		bn: "দর্জি",
+		aliases: ["টেইলর", "কাপড় সেলাই", "সেলাই"],
+	},
+	{
+		slug: "daily_labour",
+		en: "Daily Labour (Loading / Unloading)",
+		bn: "দিনমজুর",
+		aliases: [
+			"কামলা",
+			"দিনমজুর শ্রমিক",
+			"মালপত্র উঠানো",
+			"মালপত্র নামানো",
+			"মাল তোলা",
+			"লোডিং",
+		],
+	},
+] as const;
+
+export type SkillSlug = (typeof SKILLS)[number]["slug"];
