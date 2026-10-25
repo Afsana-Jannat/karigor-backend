@@ -52,10 +52,6 @@ if redis.call("EXISTS", KEYS[2]) == 1 then
   return -1
 end
 
-if redis.call("EXISTS", KEYS[1]) == 1 then
-  return 0
-end
-
 redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[2])
 redis.call("SET", KEYS[3], "0", "EX", ARGV[2])
 redis.call("SET", KEYS[2], "1", "EX", ARGV[3])
@@ -172,9 +168,11 @@ async function requestOtpForPurpose(
 	}
 
 	return {
-		message: "OTP generated successfully.",
-		...(env.NODE_ENV !== "production" && env.DEMO_MODE ? { demoOtp: otp } : {}),
-	};
+  phone,
+  otpSent: true,
+  message: "OTP generated successfully.",
+  ...(env.NODE_ENV !== "production" && env.DEMO_MODE ? { devCode: otp } : {}),
+};
 }
 
 export async function registerUser(input: RegisterInput) {
