@@ -262,10 +262,17 @@ export const blockOrUnblockUser = async (
     });
 
     if (blocked && user.role === Role.TECHNICIAN) {
-      await tx.technicianProfile.update({
+      // সেফ চেক: টেকনিশিয়ান প্রোফাইল থাকলে কেবল আপডেট করবে, না থাকলে ক্র্যাশ করবে না
+      const techProfile = await tx.technicianProfile.findUnique({
         where: { userId: targetUserId },
-        data: { isAvailableNow: false },
       });
+
+      if (techProfile) {
+        await tx.technicianProfile.update({
+          where: { userId: targetUserId },
+          data: { isAvailableNow: false },
+        });
+      }
 
       await tx.bid.updateMany({
         where: { technicianId: targetUserId, status: "ACTIVE" },
