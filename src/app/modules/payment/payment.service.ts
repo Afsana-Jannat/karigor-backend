@@ -1,6 +1,10 @@
 import { createBkashPayment } from '../../../lib/bkash.js';
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../errors/AppError.js';
+import {
+  isBkashPaymentUnresolved,
+  lockJobForPayment,
+} from './payment.lock.js';
 
 
 export async function initiateBkashPayment(
@@ -9,6 +13,8 @@ export async function initiateBkashPayment(
 ) {
   const payment = await prisma.$transaction(
     async (tx) => {
+      await lockJobForPayment(tx, jobId);
+
       const job = await tx.job.findUnique({
         where: { id: jobId },
         select: {
@@ -40,16 +46,20 @@ export async function initiateBkashPayment(
         );
       }
 
-      await tx.payment.updateMany({
+      const previousAttempts = await tx.payment.findMany({
         where: {
           jobId: job.id,
-          status: 'INITIATED',
+          method: 'BKASH',
         },
-        data: {
-          status: 'CANCELLED',
-          failureReason: 'Superseded by a new payment attempt',
-        },
+        select: { status: true, failureReason: true },
       });
+
+      if (previousAttempts.some(isBkashPaymentUnresolved)) {
+        throw new AppError(
+          'CONFLICT',
+          'A previous bKash payment is pending or needs verification. Confirm its status before trying again.',
+        );
+      }
 
       const newPayment = await tx.payment.create({
         data: {

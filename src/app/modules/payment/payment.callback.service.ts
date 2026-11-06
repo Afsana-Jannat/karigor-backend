@@ -3,6 +3,10 @@
 import { Prisma } from "../../../generated/prisma/client.js";
 import { executeBkashPayment, queryBkashPayment } from "../../../lib/bkash.js";
 import { prisma } from "../../../lib/prisma.js";
+import {
+  isBkashPaymentUnresolved,
+  lockJobForPayment,
+} from "./payment.lock.js";
 
 
 type CallbackStatus = "success" | "failure" | "cancel";
@@ -17,6 +21,48 @@ function resultUrl(status: string, jobId?: string) {
   const params = new URLSearchParams({ status });
   if (jobId) params.set("jobId", jobId);
   return `${clientUrl()}/payment/result?${params.toString()}`;
+}
+
+async function repairJobForSuccessfulPayment(paymentId: string, jobId: string) {
+  await prisma.$transaction(async (tx) => {
+    await lockJobForPayment(tx, jobId);
+
+    const payment = await tx.payment.findUnique({
+      where: { id: paymentId },
+      select: { status: true, method: true, completedAt: true },
+    });
+
+    if (payment?.status !== "SUCCESS" || payment.method !== "BKASH") return;
+
+    const updatedJob = await tx.job.updateMany({
+      where: {
+        id: jobId,
+        status: "AWAITING_CONFIRMATION",
+        paidAt: null,
+      },
+      data: {
+        paymentMethod: "BKASH",
+        paidAt: payment.completedAt ?? new Date(),
+      },
+    });
+
+    if (updatedJob.count !== 1) return;
+
+    const job = await tx.job.findUnique({
+      where: { id: jobId },
+      select: { technicianId: true },
+    });
+
+    if (job?.technicianId) {
+      await tx.notification.create({
+        data: {
+          userId: job.technicianId,
+          type: "PAYMENT_RECEIVED",
+          jobId,
+        },
+      });
+    }
+  });
 }
 
 export async function handleBkashCallback(
@@ -36,6 +82,7 @@ export async function handleBkashCallback(
       amount: true,
       status: true,
       bkashPaymentId: true,
+      failureReason: true,
     },
   });
 
@@ -50,10 +97,11 @@ export async function handleBkashCallback(
 
   // A repeated callback must not process a successful payment twice.
   if (payment.status === "SUCCESS") {
+    await repairJobForSuccessfulPayment(payment.id, payment.jobId);
     return successUrl;
   }
 
-  if (payment.status !== "INITIATED") {
+  if (!isBkashPaymentUnresolved(payment)) {
     return failureUrl;
   }
 
@@ -61,37 +109,62 @@ export async function handleBkashCallback(
     | CallbackStatus
     | undefined;
 
-  if (callbackStatus === "cancel" || callbackStatus === "failure") {
-    await prisma.payment.updateMany({
-      where: { id: payment.id, status: "INITIATED" },
-      data: {
-        status: callbackStatus === "cancel" ? "CANCELLED" : "FAILED",
-        failureReason: `bKash callback: ${callbackStatus}`,
-      },
-    });
-
-    return resultUrl(
-      callbackStatus === "cancel" ? "cancel" : "failure",
-      payment.jobId,
-    );
-  }
-
-  if (callbackStatus !== "success") {
+  if (
+    callbackStatus !== "success" &&
+    callbackStatus !== "failure" &&
+    callbackStatus !== "cancel"
+  ) {
     return failureUrl;
   }
 
   try {
     // Execute the payment, then query bKash independently for verification.
-    await executeBkashPayment(paymentID);
+    if (callbackStatus === "success") {
+      try {
+        await executeBkashPayment(paymentID);
+      } catch (error) {
+        console.warn(
+          "bKash execute call did not complete; checking transaction status",
+          { paymentId: payment.id, error },
+        );
+      }
+    }
+
     const verified = await queryBkashPayment(paymentID);
 
     const verifiedPaymentID = verified.paymentID ?? verified.paymentId;
     const trxId = verified.trxID ?? verified.trxId;
     const verifiedAmount = Number(verified.amount);
+    const transactionStatus = verified.transactionStatus?.toLowerCase();
+    const transactionFailed = ["failed", "cancelled", "canceled"].includes(
+      transactionStatus ?? "",
+    );
+
+    if (
+      callbackStatus !== "success" &&
+      transactionFailed &&
+      verifiedPaymentID === paymentID
+    ) {
+      await prisma.payment.updateMany({
+        where: {
+          id: payment.id,
+          status: { in: ["INITIATED", "FAILED"] },
+        },
+        data: {
+          status: callbackStatus === "cancel" ? "CANCELLED" : "FAILED",
+          failureReason: "bKash payment verified not completed",
+        },
+      });
+
+      return resultUrl(
+        callbackStatus === "cancel" ? "cancel" : "failure",
+        payment.jobId,
+      );
+    }
 
     if (
       verifiedPaymentID !== paymentID ||
-      verified.transactionStatus?.toLowerCase() !== "completed" ||
+      transactionStatus !== "completed" ||
       !trxId ||
       !Number.isFinite(verifiedAmount) ||
       verifiedAmount !== payment.amount ||
@@ -101,7 +174,6 @@ export async function handleBkashCallback(
       await prisma.payment.updateMany({
         where: { id: payment.id, status: "INITIATED" },
         data: {
-          status: "FAILED",
           failureReason: "bKash payment verification failed",
         },
       });
@@ -111,11 +183,27 @@ export async function handleBkashCallback(
 
     await prisma.$transaction(
       async (tx) => {
+        await lockJobForPayment(tx, payment.jobId);
+
+        const currentPayment = await tx.payment.findUnique({
+          where: { id: payment.id },
+          select: { status: true, bkashPaymentId: true, failureReason: true },
+        });
+
+        if (currentPayment?.status === "SUCCESS") return;
+        if (
+          !currentPayment ||
+          !isBkashPaymentUnresolved(currentPayment) ||
+          currentPayment.bkashPaymentId !== paymentID
+        ) {
+          throw new Error("Payment is no longer pending");
+        }
+
         // Claim this payment only if it is still awaiting completion.
         const updatedPayment = await tx.payment.updateMany({
           where: {
             id: payment.id,
-            status: "INITIATED",
+            status: currentPayment.status,
             bkashPaymentId: paymentID,
           },
           data: {
@@ -172,13 +260,19 @@ export async function handleBkashCallback(
     );
 
     return successUrl;
-  } catch {
-    // Do not overwrite SUCCESS if another callback completed it.
+  } catch (error) {
+    console.error("Could not verify or finalize bKash payment", {
+      paymentId: payment.id,
+      error,
+    });
+
     await prisma.payment.updateMany({
-      where: { id: payment.id, status: "INITIATED" },
+      where: {
+        id: payment.id,
+        status: { in: ["INITIATED", "FAILED"] },
+      },
       data: {
-        status: "FAILED",
-        failureReason: "Could not verify or finalize bKash payment",
+        failureReason: "bKash verification requires reconciliation",
       },
     });
 
