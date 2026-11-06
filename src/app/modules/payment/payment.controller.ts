@@ -3,8 +3,9 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { initiateBkashPayment } from './payment.service.js';
+import { getJobPayments, initiateBkashPayment } from './payment.service.js';
 import { handleBkashCallback } from './payment.callback.service.js';
+import { reconcileBkashPayment } from './payment.reconcile.service.js';
 
 
 interface AuthenticatedRequest extends Request {
@@ -41,6 +42,40 @@ export const initiateBkashPaymentController = catchAsync(
   },
 );
 
+export const getJobPaymentsController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    if (!user) {
+      throw new AppError("UNAUTHENTICATED", "Please log in first");
+    }
+    const result = await getJobPayments(
+      req.params.id as string,
+      user.id,
+      user.role,
+    );
+    sendResponse(res, { statusCode: 200, data: result });
+  },
+);
+
+export const reconcileBkashPaymentController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    if (!user) {
+      throw new AppError("UNAUTHENTICATED", "Please log in first");
+    }
+    if (user.role !== "CUSTOMER") {
+      throw new AppError("FORBIDDEN", "Only customers can reconcile payments");
+    }
+
+    const result = await reconcileBkashPayment(
+      req.params.id as string,
+      user.id,
+    );
+    sendResponse(res, { statusCode: 200, data: result });
+  },
+);
 
 // Add this export to the existing controller file.
 export const bkashCallback = async (

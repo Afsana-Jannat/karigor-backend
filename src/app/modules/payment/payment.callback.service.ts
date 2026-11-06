@@ -7,6 +7,7 @@ import {
   isBkashPaymentUnresolved,
   lockJobForPayment,
 } from "./payment.lock.js";
+import { hasValidBkashMerchantInvoice } from "./payment.verification.js";
 
 
 type CallbackStatus = "success" | "failure" | "cancel";
@@ -168,7 +169,10 @@ export async function handleBkashCallback(
       !trxId ||
       !Number.isFinite(verifiedAmount) ||
       verifiedAmount !== payment.amount ||
-      verified.merchantInvoiceNumber !== payment.id ||
+      !hasValidBkashMerchantInvoice(
+        verified.merchantInvoiceNumber,
+        payment.id,
+      ) ||
       (verified.currency && verified.currency !== "BDT")
     ) {
       await prisma.payment.updateMany({

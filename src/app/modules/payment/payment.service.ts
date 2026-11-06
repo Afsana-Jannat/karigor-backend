@@ -134,3 +134,71 @@ export async function initiateBkashPayment(
     );
   }
 }
+
+export async function getJobPayments(
+  jobId: string,
+  userId: string,
+  userRole: "CUSTOMER" | "TECHNICIAN" | "ADMIN",
+) {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      customerId: true,
+      technicianId: true,
+      status: true,
+      agreedPrice: true,
+      paymentMethod: true,
+      paidAt: true,
+      payments: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          method: true,
+          amount: true,
+          status: true,
+          trxId: true,
+          failureReason: true,
+          createdAt: true,
+          completedAt: true,
+        },
+      },
+    },
+  });
+
+  if (!job) throw new AppError("NOT_FOUND", "Job not found");
+
+  const isAdmin = userRole === "ADMIN";
+  const isCustomer = job.customerId === userId;
+  const isAssignedTechnician = job.technicianId === userId;
+  if (!isAdmin && !isCustomer && !isAssignedTechnician) {
+    throw new AppError("NOT_FOUND", "Job not found");
+  }
+
+  const successfulPayment = job.payments.find(
+    (payment) => payment.status === "SUCCESS",
+  );
+  const paid = job.paidAt !== null || Boolean(successfulPayment);
+  const unresolvedBkash = job.payments.some(
+    (payment) =>
+      payment.method === "BKASH" && isBkashPaymentUnresolved(payment),
+  );
+  const payable =
+    job.status === "AWAITING_CONFIRMATION" &&
+    job.agreedPrice !== null &&
+    !paid &&
+    !unresolvedBkash;
+
+  return {
+    jobId: job.id,
+    paid,
+    paidAt: job.paidAt ?? successfulPayment?.completedAt ?? null,
+    method: job.paymentMethod ?? successfulPayment?.method ?? null,
+    amountDue: paid ? 0 : job.agreedPrice,
+    paymentAttempts: job.payments,
+    availableActions: {
+      canPayWithBkash: !isAdmin && isCustomer && payable,
+      canRecordCash: !isAdmin && isAssignedTechnician && payable,
+    },
+  };
+}

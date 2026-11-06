@@ -3,6 +3,7 @@ import { Prisma } from '../../../generated/prisma/client.js';
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../errors/AppError.js';
 import { normalizeAreaSlug, normalizeSkillSlug } from '../../utils/normalizeSlug.js';
+import { isBkashPaymentUnresolved } from '../payment/payment.lock.js';
 import type { CreateJobInput, ListJobsQuery } from './jobs.validation.js';
 
 const MAX_OPEN_JOBS = 10;
@@ -420,4 +421,248 @@ export async function getOpenJobs(
       totalPages: Math.ceil(total / query.pageSize),
     },
   };
+}
+
+export async function getJobDetails(
+  jobId: string,
+  userId: string,
+  userRole: "CUSTOMER" | "TECHNICIAN" | "ADMIN",
+) {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      customerId: true,
+      technicianId: true,
+      skill: true,
+      area: true,
+      description: true,
+      preferredDate: true,
+      isEmergency: true,
+      expiresAt: true,
+      status: true,
+      agreedPrice: true,
+      paymentMethod: true,
+      paidAt: true,
+      createdAt: true,
+      customer: { select: { id: true, name: true, phone: true } },
+      technician: {
+        select: { id: true, name: true, phone: true },
+      },
+      bids: {
+        where: { technicianId: userId },
+        select: { id: true, price: true, status: true },
+        take: 1,
+      },
+      _count: { select: { bids: true } },
+      contract: {
+        select: {
+          id: true,
+          status: true,
+          customerSignedAt: true,
+          technicianSignedAt: true,
+        },
+      },
+      payments: {
+        where: { method: "BKASH", status: { in: ["INITIATED", "SUCCESS", "FAILED"] } },
+        select: {
+          method: true,
+          status: true,
+          failureReason: true,
+          completedAt: true,
+        },
+      },
+      review: { select: { id: true, rating: true, comment: true } },
+    },
+  });
+
+  if (!job) throw new AppError("NOT_FOUND", "Job not found");
+
+  const isCustomer = job.customerId === userId;
+  const isAssignedTechnician = job.technicianId === userId;
+  const isAdmin = userRole === "ADMIN";
+  const myBid = job.bids[0] ?? null;
+  let eligibleTechnician = false;
+
+  if (userRole === "TECHNICIAN" && job.status === "OPEN") {
+    const profile = await prisma.technicianProfile.findUnique({
+      where: { userId },
+      select: { skills: true, areas: true },
+    });
+    eligibleTechnician = Boolean(
+      profile?.skills.includes(job.skill) &&
+        profile.areas.includes(job.area),
+    );
+  }
+
+  const canView =
+    isAdmin ||
+    isCustomer ||
+    isAssignedTechnician ||
+    (userRole === "TECHNICIAN" &&
+      job.status === "OPEN" &&
+      (eligibleTechnician || Boolean(myBid)));
+  if (!canView) throw new AppError("NOT_FOUND", "Job not found");
+
+  const isParty = isCustomer || isAssignedTechnician;
+  const contractSigned = job.contract?.status === "SIGNED";
+  const successfulPayment = job.payments.find(
+    (payment) => payment.status === "SUCCESS",
+  );
+  const paid = job.paidAt !== null || Boolean(successfulPayment);
+  const paymentUnresolved = job.payments.some(isBkashPaymentUnresolved);
+  const canBid =
+    userRole === "TECHNICIAN" &&
+    job.status === "OPEN" &&
+    eligibleTechnician &&
+    !isCustomer;
+  const canCancel =
+    (isCustomer && ["OPEN", "CONTRACT_PENDING"].includes(job.status)) ||
+    (isAssignedTechnician && job.status === "CONTRACT_PENDING");
+  const counterpart = isCustomer
+    ? job.technician
+    : isAssignedTechnician
+      ? job.customer
+      : null;
+
+  return {
+    id: job.id,
+    skill: job.skill,
+    area: job.area,
+    status: job.status,
+    preferredDate: job.preferredDate,
+    description: job.description,
+    isEmergency: job.isEmergency,
+    expiresAt: job.expiresAt,
+    agreedPrice: job.agreedPrice,
+    createdAt: job.createdAt,
+    bidCount: job._count.bids,
+    myBid,
+    counterpart:
+      counterpart && isParty
+        ? {
+            id: counterpart.id,
+            name: counterpart.name,
+            ...(contractSigned && { phone: counterpart.phone }),
+          }
+        : null,
+    contract: job.contract,
+    payment: {
+      paidAt: job.paidAt ?? successfulPayment?.completedAt ?? null,
+      method: job.paymentMethod ?? successfulPayment?.method ?? null,
+    },
+    review: job.review,
+    allowedActions: {
+      bid: canBid && !myBid,
+      edit_bid: canBid && myBid?.status === "ACTIVE",
+      withdraw_bid: canBid && myBid?.status === "ACTIVE",
+      select_bid: isCustomer && job.status === "OPEN",
+      cancel: canCancel,
+      sign:
+        isParty &&
+        job.status === "CONTRACT_PENDING" &&
+        job.contract?.status === "PENDING",
+      complete: isAssignedTechnician && job.status === "IN_PROGRESS",
+      pay_bkash:
+        isCustomer &&
+        job.status === "AWAITING_CONFIRMATION" &&
+        !paid &&
+        !paymentUnresolved,
+      mark_cash_received:
+        isAssignedTechnician &&
+        job.status === "AWAITING_CONFIRMATION" &&
+        !paid &&
+        !paymentUnresolved,
+      confirm:
+        isCustomer && job.status === "AWAITING_CONFIRMATION" && paid,
+      review: isCustomer && job.status === "COMPLETED" && !job.review,
+      report:
+        isParty &&
+        ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED", "DISPUTED"].includes(
+          job.status,
+        ),
+    },
+  };
+}
+
+export async function confirmJob(jobId: string, customerId: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Job" WHERE "id" = ${jobId} FOR UPDATE
+    `;
+
+    const job = await tx.job.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        customerId: true,
+        technicianId: true,
+        status: true,
+        paidAt: true,
+        paymentMethod: true,
+        payments: {
+          where: { status: "SUCCESS" },
+          select: { method: true, completedAt: true },
+          take: 1,
+        },
+      },
+    });
+    if (!job || job.customerId !== customerId) {
+      throw new AppError("NOT_FOUND", "Job not found");
+    }
+
+    const successfulPayment = job.payments[0];
+    if (
+      job.status !== "AWAITING_CONFIRMATION" ||
+      !job.technicianId ||
+      (!job.paidAt && !successfulPayment)
+    ) {
+      throw new AppError(
+        "INVALID_STATUS",
+        "The job must be awaiting confirmation and fully paid",
+      );
+    }
+
+    const paidAt = job.paidAt ?? successfulPayment?.completedAt ?? new Date();
+    if (!job.paidAt) {
+      await tx.job.update({
+        where: { id: job.id },
+        data: {
+          paidAt,
+          paymentMethod: successfulPayment?.method ?? job.paymentMethod,
+        },
+      });
+    }
+
+    const updated = await tx.job.updateMany({
+      where: {
+        id: job.id,
+        customerId,
+        technicianId: job.technicianId,
+        status: "AWAITING_CONFIRMATION",
+        paidAt: { not: null },
+      },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+    if (updated.count !== 1) {
+      throw new AppError("INVALID_STATUS", "The job status has changed");
+    }
+
+    await tx.technicianProfile.updateMany({
+      where: { userId: job.technicianId },
+      data: { completedJobs: { increment: 1 } },
+    });
+    await tx.notification.create({
+      data: {
+        userId: job.technicianId,
+        type: "JOB_CONFIRMED",
+        jobId: job.id,
+      },
+    });
+
+    return tx.job.findUniqueOrThrow({
+      where: { id: job.id },
+      select: { id: true, status: true, completedAt: true, paidAt: true },
+    });
+  });
 }

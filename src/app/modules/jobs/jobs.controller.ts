@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { createJob, getMyJobs } from './jobs.service.js';
+import { confirmJob, createJob, getJobDetails, getMyJobs } from './jobs.service.js';
 import type { ListJobsQuery } from './jobs.validation.js';
 
 import { getOpenJobs } from './jobs.service.js';
@@ -70,7 +70,7 @@ export const getOpenJobsController = catchAsync(
   async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
     const user = authReq.user;
-    
+
     if (!user) {
       throw new AppError('UNAUTHENTICATED', 'Please log in first');
     }
@@ -89,5 +89,34 @@ export const getOpenJobsController = catchAsync(
       data: result.data,
       meta: result.meta,
     });
+  },
+);
+
+export const getJobDetailsController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    if (!user) throw new AppError("UNAUTHENTICATED", "Please log in first");
+
+    const result = await getJobDetails(
+      req.params.id as string,
+      user.id,
+      user.role,
+    );
+    sendResponse(res, { data: result });
+  },
+);
+
+export const confirmJobController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    if (!user) throw new AppError("UNAUTHENTICATED", "Please log in first");
+    if (user.role !== "CUSTOMER") {
+      throw new AppError("FORBIDDEN", "Only the customer can confirm the job");
+    }
+
+    const result = await confirmJob(req.params.id as string, user.id);
+    sendResponse(res, { data: result });
   },
 );
