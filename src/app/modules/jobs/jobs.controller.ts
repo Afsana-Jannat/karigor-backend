@@ -3,7 +3,13 @@ import type { Request, Response } from 'express';
 import { AppError } from '../../errors/AppError.js';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { sendResponse } from '../../utils/sendResponse.js';
-import { confirmJob, createJob, getJobDetails, getMyJobs } from './jobs.service.js';
+import {
+  completeJob,
+  confirmJob,
+  createJob,
+  getJobDetails,
+  getMyJobs,
+} from './jobs.service.js';
 import type { ListJobsQuery } from './jobs.validation.js';
 
 import { getOpenJobs } from './jobs.service.js';
@@ -117,6 +123,23 @@ export const confirmJobController = catchAsync(
     }
 
     const result = await confirmJob(req.params.id as string, user.id);
+    sendResponse(res, { data: result });
+  },
+);
+
+export const completeJobController = catchAsync(
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    if (!user) throw new AppError('UNAUTHENTICATED', 'Please log in first');
+    if (user.role !== 'TECHNICIAN') {
+      throw new AppError(
+        'FORBIDDEN',
+        'Only the assigned technician can mark the job complete',
+      );
+    }
+
+    const result = await completeJob(req.params.id as string, user.id);
     sendResponse(res, { data: result });
   },
 );

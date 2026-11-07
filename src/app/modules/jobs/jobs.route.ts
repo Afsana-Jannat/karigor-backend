@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { validateRequest } from "../../middlewares/validateRequest.js";
 import {
+  completeJobController,
   createJobController,
   confirmJobController,
   getJobDetailsController,
@@ -36,6 +37,13 @@ router.get(
   authenticate,
   validateRequest({ query: openJobsQuerySchema }),
   getOpenJobsController,
+);
+
+router.post(
+  "/:id/complete",
+  authenticate,
+  validateRequest({ params: jobIdParamsSchema }),
+  completeJobController,
 );
 
 router.post(

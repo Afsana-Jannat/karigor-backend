@@ -585,6 +585,58 @@ export async function getJobDetails(
   };
 }
 
+export async function completeJob(jobId: string, technicianId: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Job" WHERE "id" = ${jobId} FOR UPDATE
+    `;
+
+    const job = await tx.job.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        customerId: true,
+        technicianId: true,
+        status: true,
+      },
+    });
+    if (!job || job.technicianId !== technicianId) {
+      throw new AppError("NOT_FOUND", "Job not found");
+    }
+    if (job.status !== "IN_PROGRESS") {
+      throw new AppError(
+        "INVALID_STATUS",
+        "The job must be in progress before it can be marked complete",
+      );
+    }
+
+    const updated = await tx.job.updateMany({
+      where: {
+        id: job.id,
+        technicianId,
+        status: "IN_PROGRESS",
+      },
+      data: { status: "AWAITING_CONFIRMATION" },
+    });
+    if (updated.count !== 1) {
+      throw new AppError("INVALID_STATUS", "The job status has changed");
+    }
+
+    await tx.notification.create({
+      data: {
+        userId: job.customerId,
+        type: "JOB_COMPLETED",
+        jobId: job.id,
+      },
+    });
+
+    return tx.job.findUniqueOrThrow({
+      where: { id: job.id },
+      select: { id: true, status: true },
+    });
+  });
+}
+
 export async function confirmJob(jobId: string, customerId: string) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw<{ id: string }[]>`
