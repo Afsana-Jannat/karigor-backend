@@ -6,6 +6,7 @@ import { AppError } from '../../errors/AppError.js';
 import { matchSlugs, parseAge, parseExperience, parseRange } from '../../../lib/text.js';
 import type { OnboardingKey } from '../../../constants/index.js';
 import { askGeminiWithAudio } from '../../../lib/gemini.js';
+import { upsertTechnicianEmbedding } from '../chat/chat.indexer.js';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -314,6 +315,11 @@ export const upsertProfileDB = async (
     });
   });
 
+  try {
+    await upsertTechnicianEmbedding(userId);
+  } catch (error) {
+    console.error('[Technician profile] Chat index sync failed:', error);
+  }
   return getMyProfileDB(userId);
 };
 

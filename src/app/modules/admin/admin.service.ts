@@ -8,6 +8,7 @@ import {
   Role,
 } from "../../../generated/prisma/client.js";
 import cloudinary from "cloudinary";
+import { upsertTechnicianEmbedding } from "../chat/chat.indexer.js";
 
 const getPrivateNidUrl = (publicId: string) => {
   const timestamp = Math.round(new Date().getTime() / 1000);
@@ -70,7 +71,7 @@ export const approveVerification = async (
   adminId: string,
   technicianId: string,
 ) => {
-  return await prisma.$transaction(async (tx) => {
+  const updatedProfile = await prisma.$transaction(async (tx) => {
     const profile = await tx.technicianProfile.findUnique({
       where: { userId: technicianId },
     });
@@ -105,6 +106,12 @@ export const approveVerification = async (
 
     return updatedProfile;
   });
+  try {
+    await upsertTechnicianEmbedding(technicianId);
+  } catch (error) {
+    console.error('[Admin verification] Chat index sync failed:', error);
+  }
+  return updatedProfile;
 };
 
 export const rejectVerification = async (
@@ -112,7 +119,7 @@ export const rejectVerification = async (
   technicianId: string,
   reason: string,
 ) => {
-  return await prisma.$transaction(async (tx) => {
+  const updatedProfile = await prisma.$transaction(async (tx) => {
     const profile = await tx.technicianProfile.findUnique({
       where: { userId: technicianId },
     });
@@ -148,6 +155,12 @@ export const rejectVerification = async (
 
     return updatedProfile;
   });
+  try {
+    await upsertTechnicianEmbedding(technicianId);
+  } catch (error) {
+    console.error('[Admin verification] Chat index sync failed:', error);
+  }
+  return updatedProfile;
 };
 
 export const getUsers = async (

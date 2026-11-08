@@ -12,6 +12,7 @@ import { reportRoutes } from "../modules/reports/report.route.js";
 import { searchRoutes } from "../modules/search/search.route.js";
 import { adminRoutes } from "../modules/admin/admin.route.js";
 import { notificationsRoutes } from "../modules/notifications/notifications.route.js";
+import { chatRoutes } from "../modules/chat/chat.route.js";
 
 const router = Router();
 
@@ -32,6 +33,7 @@ const moduleRoutes = [
   { path: "/search", route: searchRoutes },
   { path: "/admin", route: adminRoutes },
   { path: "/notifications", route: notificationsRoutes },
+  { path: "/chat", route: chatRoutes },
   {path:"/jobs", route:jobBidsRoutes}
 ];
 
