@@ -2,6 +2,7 @@ import { env } from './config/env.js';
 import app from './app.js';
 import { prisma } from './lib/prisma.js';
 import { redis } from './lib/redis.js';
+import { startDailyTechnicianReindex } from './lib/cron.js';
 
 const PORT = env.PORT;
 
@@ -17,6 +18,7 @@ async function main() {
     }
     console.log('Connected to Redis successfully.');
 
+    const technicianReindexTask = startDailyTechnicianReindex();
     const server = app.listen(PORT, () => {
       console.log(`Karigor server is running on port ${PORT}`);
     });
@@ -24,6 +26,7 @@ async function main() {
     // Close the server and the database pool cleanly (Ctrl+C or a host restart).
     const shutdown = (signal: string) => {
       console.log(`${signal} received, shutting down...`);
+      technicianReindexTask.stop();
       server.close(async () => {
         if (redis.isOpen) {
           await redis.quit();

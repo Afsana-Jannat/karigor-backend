@@ -118,9 +118,9 @@ export const confirmJobController = catchAsync(
     const authReq = req as AuthenticatedRequest;
     const user = authReq.user;
     if (!user) throw new AppError("UNAUTHENTICATED", "Please log in first");
-    if (user.role !== "CUSTOMER") {
-      throw new AppError("FORBIDDEN", "Only the customer can confirm the job");
-    }
+    // if (user.role !== "CUSTOMER" || user.role !== "TECHNICIAN") {
+    //   throw new AppError("FORBIDDEN", "Only the customer can confirm the job");
+    // }
 
     const result = await confirmJob(req.params.id as string, user.id);
     sendResponse(res, { data: result });

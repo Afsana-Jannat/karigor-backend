@@ -46,6 +46,11 @@ const envSchema = z.object({
   // Added when the AI feature is built. Placeholder values are fine until then.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
+
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_CHAT_MODEL: z.string().optional(),
+  OPENROUTER_EMBEDDING_MODEL: z.string().optional(),
+  OPENROUTER_FALLBACK_CHAT_MODELS: z.string().default(''),
 });
 
 const redisConfigured = Boolean(

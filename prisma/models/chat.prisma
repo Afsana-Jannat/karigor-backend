@@ -1,0 +1,8 @@
+model TechnicianEmbedding {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    content String?
+    metadata Json?
+    embedding Unsupported("vector")
+
+    @@map("technician_embeddings")
+}
