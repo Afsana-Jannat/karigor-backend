@@ -11,3 +11,5 @@ pnpm-lock.yaml
 yarn.lock
 pnpm-workspace.yaml
 .vscode
+.vercel
+.env*

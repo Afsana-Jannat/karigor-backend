@@ -9,6 +9,7 @@ export const redis = createClient({
   username: env.REDIS_USER,
   password: env.REDIS_PASSWORD,
   socket: {
+    tls: true,
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     reconnectStrategy(retries) {
