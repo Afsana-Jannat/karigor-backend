@@ -2,7 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { ZodError } from 'zod';
-import { Prisma } from '../../generated/prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { AppError, type ErrorCode, ERROR_STATUS } from '../errors/AppError.js';
 
 type ErrorPayload = {

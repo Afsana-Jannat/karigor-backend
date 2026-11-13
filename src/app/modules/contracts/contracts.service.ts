@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 
 import { prisma } from '../../../lib/prisma.js';
-import { AREAS, SKILLS } from '../../../constants';
+import { AREAS, SKILLS } from '../../../constants/index.js';
 import { AppError } from '../../errors/AppError.js';
 import { issueContractOtp, verifyContractOtp } from './contracts.otp.js';
 import { redis } from '../../../lib/redis.js';

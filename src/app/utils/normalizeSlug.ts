@@ -1,5 +1,5 @@
 import { string } from "zod";
-import { AREAS, SKILLS } from "../../constants";
+import { AREAS, SKILLS } from "../../constants/index.js";
 
 
 
